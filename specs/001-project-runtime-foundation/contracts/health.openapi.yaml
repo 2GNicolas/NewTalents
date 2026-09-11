@@ -1,0 +1,107 @@
+openapi: 3.1.0
+info:
+  title: New Talents Runtime Health Contract
+  version: 1.0.0
+  description: >-
+    Foundation-only liveness and readiness contract. It exposes no business data,
+    credentials, configuration values, dependency versions, or internal diagnostics.
+servers:
+  - url: http://localhost:{port}
+    description: Local backend
+    variables:
+      port:
+        default: "3000"
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      summary: Confirm that the backend process can serve HTTP requests
+      tags:
+        - Health
+      responses:
+        "200":
+          description: The backend process is serving requests.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivenessResponse"
+              examples:
+                live:
+                  value:
+                    status: ok
+  /health/ready:
+    get:
+      operationId: getReadiness
+      summary: Confirm validated configuration and PostgreSQL connectivity
+      description: >-
+        Executes a bounded authenticated PostgreSQL connectivity query through the
+        backend database adapter with an internal timeout of five seconds. Unavailable,
+        rejected, refused, timed-out, and unexpected probe failures are normalized to
+        the documented 503 response. It does not create or require any database table.
+      tags:
+        - Health
+      responses:
+        "200":
+          description: Configuration is valid and PostgreSQL connectivity is confirmed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+              examples:
+                ready:
+                  value:
+                    status: ready
+        "503":
+          description: PostgreSQL connectivity could not be confirmed within the allowed bound.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/NoStore"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnavailableResponse"
+              examples:
+                unavailable:
+                  value:
+                    status: unavailable
+components:
+  headers:
+    NoStore:
+      description: Prevent health outcomes from being cached.
+      schema:
+        type: string
+        const: no-store
+  schemas:
+    LivenessResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: ok
+    ReadinessResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: ready
+    UnavailableResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: unavailable

@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment values
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Generated and build output
+dist/
+build/
+coverage/
+.expo/
+web-build/
+apps/backend/src/generated/
+
+# Test and tool output
+*.log
+*.tmp
+*.swp
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

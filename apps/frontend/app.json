@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "New Talents",
+    "slug": "new-talents",
+    "version": "0.0.0",
+    "orientation": "default",
+    "scheme": "newtalents",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android", "web"],
+    "plugins": ["expo-router"],
+    "web": { "bundler": "metro", "output": "static" },
+    "ios": { "supportsTablet": true },
+    "android": {},
+    "experiments": { "typedRoutes": true }
+  }
+}

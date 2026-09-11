@@ -1,25 +1,17 @@
 <!--
 Sync Impact Report
-- Version change: initial scaffold -> 1.0.0
+- Version change: 1.0.0 -> 2.0.0
 - Modified principles:
-  - Template placeholders -> I. Specification-Driven Development
-  - Template placeholders -> II. Incremental and Bounded Delivery
-  - Template placeholders -> III. Player-Centered Product Scope
-  - Template placeholders -> IV. Separation Between Product Presentation and FEM
-  - Template placeholders -> V. Evidence-Based Football Information
-  - Template placeholders -> VI. Privacy, Authorization, and Minor Protection
-  - Template placeholders -> VII. Architecture Through Explicit Planning
-  - Template placeholders -> VIII. Cross-Platform Product Consistency
-  - Template placeholders -> IX. Quality and Verification
-  - Template placeholders -> X. Documentation Authority and Consistency
-  - Template placeholders -> XI. Controlled Change Management
-  - Template placeholders -> XII. AI Assistant Behavior
-- Added sections:
-  - Product and Domain Guardrails
-  - Development Workflow and Quality Gates
-  - Governance rules for authority, amendments, versioning, compliance, exceptions,
-    and propagation
-- Removed sections: none; scaffold placeholders were replaced with project rules
+  - I. Specification-Driven Development -> I. Specification-Driven Development
+    (mandatory core workflow separated from optional Clarify, Analyze, and Converge workflows)
+  - XII. AI Assistant Behavior -> XII. AI Assistant Behavior
+    (optional workflows require a concrete justification and never replace issue resolution)
+- Modified sections:
+  - Development Workflow and Quality Gates (ambiguity and consistency outcomes remain mandatory;
+    formal Clarify and Analyze executions are optional; Converge remains conditional)
+  - Governance (constitution compliance review remains mandatory but is not restricted to Analyze)
+- Added sections: none
+- Removed sections: none
 - Follow-up TODOs: none
 -->
 # New Talents Constitution
@@ -28,10 +20,14 @@ Sync Impact Report
 
 ### I. Specification-Driven Development
 Every product change MUST begin with a bounded, reviewed, and approved specification. No feature
-MAY move directly from an informal idea to implementation. Work MUST follow this sequence: Specify;
-Clarify when material ambiguities exist; Plan; Generate Tasks; Analyze Consistency; Implement; and
-Converge when necessary. Every implementation change MUST remain traceable to approved requirements
-and tasks. This discipline prevents undocumented scope and makes product decisions auditable.
+MAY move directly from an informal idea to implementation. The mandatory core workflow is: Specify;
+Plan; Generate Tasks; and Implement. Clarification MAY be used when material ambiguities require a
+dedicated resolution step. Analysis MAY be used when complexity, risk, contracts, or suspected
+inconsistencies justify a cross-artifact review. Convergence MAY be used when implementation may
+differ from its governing artifacts or incomplete work must be identified. Optional workflow use
+does not remove the obligation to resolve known ambiguities and inconsistencies. Every
+implementation change MUST remain traceable to approved requirements and tasks. This discipline
+prevents undocumented scope and makes product decisions auditable.
 
 ### II. Incremental and Bounded Delivery
 The product MUST be delivered through small, independently understandable features. Each
@@ -114,9 +110,13 @@ its impact, update the artifact, and trigger a downstream consistency review.
 Codex MUST operate within the active Spec Kit phase. It MUST read relevant governing documents,
 separate confirmed facts from assumptions, identify material ambiguities, avoid speculative
 requirements and future functionality, preserve existing artifacts, and keep changes within the
-active feature boundary. It MUST report conflicts rather than resolve them silently and MUST stop
-when a missing decision would materially change the result. A specification request MUST NOT be
-treated as authorization to implement code.
+active feature boundary. It MUST NOT invoke `$speckit-clarify` automatically when no material
+ambiguity exists, and it MUST NOT invoke `$speckit-analyze` automatically for every feature. When
+recommending either optional workflow, Codex MUST explain the concrete ambiguity, complexity, risk,
+contract, or suspected inconsistency that justifies it. Optional workflow execution MUST NOT be
+treated as a substitute for resolving a known issue. Codex MUST report conflicts rather than
+resolve them silently and MUST stop when an unresolved decision would materially change the result.
+A specification request MUST NOT be treated as authorization to implement code.
 
 ## Product and Domain Guardrails
 
@@ -136,17 +136,22 @@ treated as authorization to implement code.
 ## Development Workflow and Quality Gates
 
 1. A feature MUST have an approved, bounded specification before planning begins.
-2. Material ambiguity MUST be resolved through clarification before irreversible technical choices
-   or implementation tasks are accepted.
+2. Material ambiguities MUST be resolved before dependent planning or implementation proceeds.
+   Resolution MAY occur through an updated specification, an explicit project decision, or
+   `$speckit-clarify`.
 3. A plan MUST document relevant architecture decisions, contracts, security boundaries, risks, and
    proportionate verification.
 4. Tasks MUST map to approved requirements and produce independently verifiable outcomes.
-5. Consistency analysis MUST identify contradictions across the specification, plan, tasks, this
-   constitution, and applicable domain documentation before implementation.
-6. Implementation MUST remain within approved scope and MUST satisfy defined quality gates.
-7. Convergence review MUST be used when delivered behavior may differ from the governing artifacts
+5. Specifications, plans, and tasks MUST remain consistent. Known material inconsistencies MUST be
+   resolved before dependent implementation proceeds.
+6. Formal `$speckit-analyze` execution is optional. It SHOULD be used for features with significant
+   security, authorization, data-integrity, contract, integration, or cross-cutting risk.
+   Implementation MAY proceed without `$speckit-analyze` when the governing artifacts have been
+   reviewed and no material inconsistency remains.
+7. Implementation MUST remain within approved scope and MUST satisfy defined quality gates.
+8. `$speckit-converge` MAY be used when delivered behavior may differ from the governing artifacts
    or when incomplete work must be identified explicitly.
-8. Exceptions MUST be documented and approved under Governance before dependent work proceeds.
+9. Exceptions MUST be documented and approved under Governance before dependent work proceeds.
 
 ## Governance
 
@@ -165,7 +170,10 @@ Constitution versions MUST follow semantic versioning:
 - MINOR for new principles, new governance sections, or materially expanded obligations.
 - PATCH for clarifications and non-semantic wording corrections.
 
-Every feature plan MUST include a constitution compliance review before implementation. Delivery
+Every feature MUST complete a constitution compliance review before implementation. The review MAY
+be performed during planning, task review, implementation preparation, or a formal
+`$speckit-analyze` workflow. Formal analysis is not the only acceptable compliance mechanism and is
+not mandatory when the artifacts have been reviewed and no material inconsistency remains. Delivery
 review MUST verify traceability, required evidence, authorization boundaries, testing obligations,
 and documented exceptions. Non-compliance MUST block progression unless an exception is approved.
 
@@ -174,4 +182,4 @@ approved by the project's designated decision authority. It MUST identify affect
 risks, compensating controls, and the artifact or milestone at which compliance will be restored.
 Exceptions MUST NOT silently redefine this constitution.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-09 | **Last Amended**: 2026-09-09
+**Version**: 2.0.0 | **Ratified**: 2026-09-09 | **Last Amended**: 2026-09-10
