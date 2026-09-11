@@ -1,0 +1,48 @@
+{
+  "name": "@new-talents/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "prebuild": "npm run prisma:generate",
+    "build": "nest build",
+    "prestart": "npm run prisma:generate",
+    "start": "nest start",
+    "start:prod": "node dist/main.js",
+    "predev": "npm run prisma:generate",
+    "dev": "nest start --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:unit": "vitest run --exclude test/contract/** --exclude test/integration/**",
+    "test:config": "vitest run src/config/environment.schema.spec.ts",
+    "test:contract": "vitest run test/contract",
+    "test:integration": "vitest run test/integration --exclude test/integration/postgresql-persistence.e2e-spec.ts",
+    "test:persistence": "vitest run test/integration/postgresql-persistence.e2e-spec.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.8",
+    "@nestjs/config": "12.0.0",
+    "@nestjs/core": "11.1.8",
+    "@nestjs/platform-express": "11.1.8",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "pg": "8.23.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.6.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "11.0.10",
+    "@nestjs/schematics": "11.0.9",
+    "@nestjs/testing": "11.1.8",
+    "@types/node": "24.13.4",
+    "@types/pg": "8.23.1",
+    "@types/supertest": "7.2.1",
+    "@vitest/coverage-v8": "5.0.0",
+    "prisma": "7.10.0",
+    "supertest": "7.2.2",
+    "ts-node": "10.9.2",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
+  }
+}

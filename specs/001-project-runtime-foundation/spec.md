@@ -1,6 +1,6 @@
 # Feature Specification: Project Runtime Foundation
 
-**Feature Branch**: Not created (no branch hook configured)
+**Feature Branch**: `001-project-runtime-foundation`
 
 **Created**: 2026-09-10
 
@@ -8,6 +8,20 @@
 
 **Input**: Establish the minimum executable and verifiable project foundation for incremental
 frontend, backend, configuration, and relational database development without business features.
+
+## Clarifications
+
+### Session 2026-09-10
+
+- Q: How is the local development database provisioned within this feature? → A: Include an
+  isolated PostgreSQL development service with persistent local data and repeatable startup that
+  does not require a host installation. Docker Compose guides planning; external, staging, and
+  production database provisioning remains out of scope.
+- Q: Which branch contains Feature 001? → A: `001-project-runtime-foundation`.
+- Q: How is setup reproducibility verified without a multi-contributor percentage? → A: One
+  contributor follows only documented instructions from a clean supported environment within the
+  defined time and obtains the documented frontend, backend, configuration, and local database
+  results without undocumented assistance.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -31,8 +45,9 @@ steps.
    reports that it is ready to start.
 2. **Given** an unsupported or missing required runtime dependency, **When** setup is attempted,
    **Then** setup stops with a clear message identifying the unmet prerequisite and how to verify it.
-3. **Given** the documented setup is repeated without project changes, **When** dependencies are
-   prepared again, **Then** the resulting runnable foundation is equivalent to the first setup.
+3. **Given** a clean checkout on a supported development environment, **When** dependencies are
+   prepared through the documented process, **Then** the resulting runnable foundation is
+   reproducible without undocumented assistance.
 
 ---
 
@@ -83,14 +98,17 @@ outcome, and reports a verifiable success response without business data.
 
 ### User Story 4 - Verify Configuration and Database Readiness (Priority: P2)
 
-As a project contributor, I can verify required runtime configuration and relational database
-connectivity so that infrastructure problems are detected before feature work depends on them.
+As a project contributor, I can provision an isolated local PostgreSQL service and verify required
+runtime configuration and database connectivity so that infrastructure problems are detected before
+feature work depends on them.
 
 **Why this priority**: Clear validation and failure reporting reduce setup uncertainty while keeping
 business schemas outside this foundation.
 
-**Independent Test**: With a reachable configured database, the foundation confirms connectivity;
-with a missing setting or unreachable database, it fails with an actionable, secret-free message.
+**Independent Test**: A contributor without PostgreSQL installed on the host can start the isolated
+local database through the documented process, confirm backend connectivity, restart the service
+without losing local database data, and receive actionable, secret-free failures when configuration
+or infrastructure is unavailable.
 
 **Acceptance Scenarios**:
 
@@ -104,10 +122,16 @@ with a missing setting or unreachable database, it fails with an actionable, sec
    provides an actionable diagnostic.
 4. **Given** development configuration, **When** a production-designated environment is started,
    **Then** development-only defaults are not silently reused.
+5. **Given** a contributor does not have PostgreSQL installed directly on the host, **When** the
+   documented local database process is followed, **Then** an isolated PostgreSQL service becomes
+   available to the backend.
+6. **Given** the local database contains persisted development data, **When** its service undergoes
+   a normal stop and restart, **Then** that data remains available.
 
 ### Edge Cases
 
-- Dependency preparation is interrupted and then retried from the same checkout.
+- Dependency preparation is interrupted; the documented recovery procedure preserves project files
+  and local database data before preparation is attempted again.
 - A supported runtime is present but outside the documented compatible version range.
 - An example environment file is used without replacing required placeholder values.
 - A required setting exists but is empty, malformed, or valid only for a different environment.
@@ -116,6 +140,8 @@ with a missing setting or unreachable database, it fails with an actionable, sec
   outcome.
 - Database credentials are syntactically valid but rejected by the configured database.
 - The database endpoint resolves but the database is unavailable, times out, or refuses connections.
+- The isolated local database is restarted after having persisted development data.
+- A contributor has no PostgreSQL installation on the host.
 - An environment requests external origins or network exposure without an explicit allow decision.
 - Diagnostic output receives a configuration value containing secret material.
 
@@ -170,6 +196,16 @@ with a missing setting or unreachable database, it fails with an actionable, sec
   verification.
 - **FR-023**: This feature MUST NOT introduce authentication, authorization, users, roles, tokens,
   protected routes, business modules, business database schemas, or product functionality.
+- **FR-024**: The local development foundation MUST provide a repeatable way to provision and run an
+  isolated PostgreSQL service without requiring PostgreSQL to be installed directly on the
+  contributor's host.
+- **FR-025**: The local PostgreSQL service MUST preserve local database data across normal service
+  stops and restarts.
+- **FR-026**: The local database startup process MUST begin from a clean supported checkout, be
+  repeatable, and make the resulting service available for backend configuration and connectivity
+  verification.
+- **FR-027**: Local database provisioning MUST NOT create business tables or business migrations;
+  external, staging, production, and managed database provisioning remain outside this feature.
 
 ### Operational States
 
@@ -181,34 +217,39 @@ with a missing setting or unreachable database, it fails with an actionable, sec
   structurally valid, and appropriate for the selected environment.
 - **Configuration invalid**: Startup is blocked with a secret-free diagnostic identifying the
   missing or invalid setting category.
-- **Database reachable**: The configured relational database accepts a connectivity verification
-  without dependence on business tables.
-- **Database unavailable**: The failure is reported as an infrastructure connectivity problem and
-  the backend MUST NOT claim full readiness.
+- **Local database ready**: The isolated PostgreSQL service is running with persistent local storage
+  and accepts backend connectivity verification without dependence on business tables.
+- **Local database unavailable**: The isolated PostgreSQL service cannot be started or reached; the
+  failure is reported as an infrastructure connectivity problem and the backend MUST NOT claim full
+  readiness.
 - **Health verification failed**: The result clearly indicates that backend availability could not
   be confirmed and MUST NOT be presented as healthy.
 
 ### Scope Boundaries
 
 This feature includes only dependency preparation, runtime startup, environment-specific
-configuration, configuration validation, a minimal backend health capability, relational database
-connectivity verification, clear foundational failures, and repeatable local setup documentation.
+configuration, configuration validation, a minimal backend health capability, repeatable local
+provisioning of an isolated PostgreSQL service, relational database connectivity verification,
+clear foundational failures, and repeatable local setup documentation.
 
 This feature excludes user accounts, roles, permissions, authentication, JWT, protected routes,
 player and tutor data, academies, passport lifecycle, business database schemas, product screens,
 FEM implementation, match management, statistics, videos, payments, notifications, deployment
 infrastructure, production hosting, CI/CD, and tournament management.
 
-Detailed framework configuration, repository folder structure, package selection, runtime commands,
-infrastructure definitions, and other implementation decisions are deferred to planning.
+External, staging, production, and managed database provisioning are also outside this feature.
+Docker Compose is the approved direction for local database provisioning, consistent with the
+initial architecture; exact container configuration, image version, ports, volume names, commands,
+connection values, repository folder structure, package selection, and other implementation
+decisions are deferred to planning.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: At least 90% of contributors testing the documented process from a clean supported
-  environment can prepare dependencies and start both runtimes within 30 minutes without
-  undocumented assistance.
+- **SC-001**: A contributor following only the documented instructions from a clean supported
+  environment can prepare dependencies, start the local database and both runtimes, and verify
+  backend health and database readiness within 30 minutes without undocumented assistance.
 - **SC-002**: In all validation cases for missing, empty, malformed, or placeholder required
   settings, the affected runtime refuses readiness and identifies the setting category without
   exposing its value.
@@ -220,9 +261,9 @@ infrastructure definitions, and other implementation decisions are deferred to p
   usable secrets, credentials, or implicit production values.
 - **SC-006**: Frontend and backend startup can each be verified independently in 100% of supported
   local scenarios, apart from dependencies explicitly documented for the runtime being tested.
-- **SC-007**: Two independent clean supported environments following the same documentation produce
-  equivalent ready-state results for dependency setup, frontend startup, backend health, and
-  database connectivity.
+- **SC-007**: One documented clean setup from a supported checkout produces recorded pass or fail
+  results for dependency setup, frontend startup, backend health, configuration validation, local
+  database startup, and database readiness without undocumented assistance.
 - **SC-008**: Scope review finds zero business tables, authentication behavior, protected routes,
   product screens, simulated product modules, or other listed out-of-scope capabilities.
 
@@ -230,8 +271,12 @@ infrastructure definitions, and other implementation decisions are deferred to p
 
 - Contributors have access to a supported development machine and permission to install the
   documented project prerequisites.
-- A relational database endpoint can be provided locally or externally for connectivity testing;
-  provisioning and hosting that database are outside this feature.
+- The foundation provisions an isolated local PostgreSQL service for connectivity testing, with
+  persistent local data across normal restarts and no requirement for a host PostgreSQL
+  installation. Docker Compose is the approved planning direction, while its exact configuration is
+  deferred to the implementation plan.
+- External, staging, production, and managed database provisioning and hosting are outside this
+  feature.
 - The initial architecture is contextual direction. Exact frameworks, dependencies, workspace
   organization, commands, and configuration mechanisms will be confirmed during planning.
 - Mobile and web are future targets of the shared frontend direction, but this feature proves only

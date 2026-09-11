@@ -1,0 +1,52 @@
+{
+  "name": "new-talents",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24.11.0 <25",
+    "npm": "10.8.0"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=24.11.0 <25",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": "10.8.0",
+      "onFail": "error"
+    }
+  },
+  "packageManager": "npm@10.8.0",
+  "scripts": {
+    "verify:toolchain": "node tools/verify-toolchain.mjs",
+    "prisma:generate": "npm run prisma:generate --workspace=@new-talents/backend",
+    "build:backend": "npm run build --workspace=@new-talents/backend",
+    "dev:backend": "npm run dev --workspace=@new-talents/backend",
+    "dev:frontend:web": "npm run web --workspace=@new-talents/frontend",
+    "dev:frontend:android": "npm run android --workspace=@new-talents/frontend",
+    "dev:frontend:ios": "npm run ios --workspace=@new-talents/frontend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test:unit --workspaces --if-present",
+    "test:backend:integration": "npm run test:integration --workspace=@new-talents/backend",
+    "test:backend:contract": "npm run test:contract --workspace=@new-talents/backend",
+    "test:frontend": "npm run test:unit --workspace=@new-talents/frontend",
+    "db:validate-env": "node docker/validate-environment.mjs",
+    "db:up": "npm run db:validate-env && docker compose --env-file docker/.env -f docker/compose.yaml up -d --wait",
+    "db:status": "npm run db:validate-env && docker compose --env-file docker/.env -f docker/compose.yaml ps",
+    "db:logs": "npm run db:validate-env && docker compose --env-file docker/.env -f docker/compose.yaml logs new-talents-postgres",
+    "db:stop": "npm run db:validate-env && docker compose --env-file docker/.env -f docker/compose.yaml stop new-talents-postgres",
+    "db:start": "npm run db:validate-env && docker compose --env-file docker/.env -f docker/compose.yaml start new-talents-postgres",
+    "db:restart": "npm run db:validate-env && docker compose --env-file docker/.env -f docker/compose.yaml restart new-talents-postgres",
+    "db:down": "npm run db:validate-env && docker compose --env-file docker/.env -f docker/compose.yaml down",
+    "db:verify-persistence": "npm run test:persistence --workspace=@new-talents/backend",
+    "health:live": "node tools/check-health.mjs live",
+    "health:ready": "node tools/check-health.mjs ready",
+    "verify:config": "node --test tools/verify-toolchain.test.mjs docker/validate-environment.test.mjs && npm run test:config --workspaces --if-present",
+    "verify:foundation": "node tools/verify-foundation.mjs && npm run typecheck && npm test && npm run test:backend:contract && npm run test:backend:integration && npm run db:verify-persistence"
+  }
+}
