@@ -6,3 +6,95 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum IdentityStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RoleStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum FunctionalRole {
+  ADMINISTRATOR
+  ANALYST
+  TUTOR
+  ACADEMY_USER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  ENDED
+}
+
+enum ChangeOutcome {
+  APPLIED
+  DENIED
+  FAILED
+}
+
+model Identity {
+  id String @id @default(uuid()) @db.Uuid
+  status IdentityStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deactivatedAt DateTime?
+  roleAssignments RoleAssignment[] @relation("roleIdentity")
+  assignedRoles RoleAssignment[] @relation("roleAssignedBy")
+  memberships AcademyMembership[] @relation("membershipIdentity")
+  assignedMemberships AcademyMembership[] @relation("membershipAssignedBy")
+  actorChanges AuthorizationChangeRecord[] @relation("changeActor")
+  targetChanges AuthorizationChangeRecord[] @relation("changeTarget")
+}
+
+model RoleAssignment {
+  id String @id @default(uuid()) @db.Uuid
+  identityId String @db.Uuid
+  role FunctionalRole
+  status RoleStatus @default(ACTIVE)
+  assignedAt DateTime @default(now())
+  revokedAt DateTime?
+  assignedByIdentityId String @db.Uuid
+  identity Identity @relation("roleIdentity", fields: [identityId], references: [id], onDelete: Restrict)
+  assignedBy Identity @relation("roleAssignedBy", fields: [assignedByIdentityId], references: [id], onDelete: Restrict)
+  @@index([identityId, status])
+}
+
+model Academy {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  memberships AcademyMembership[]
+}
+
+model AcademyMembership {
+  id String @id @default(uuid()) @db.Uuid
+  identityId String @db.Uuid
+  academyId String @db.Uuid
+  status MembershipStatus @default(ACTIVE)
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+  assignedByIdentityId String @db.Uuid
+  identity Identity @relation("membershipIdentity", fields: [identityId], references: [id], onDelete: Restrict)
+  academy Academy @relation(fields: [academyId], references: [id], onDelete: Restrict)
+  assignedBy Identity @relation("membershipAssignedBy", fields: [assignedByIdentityId], references: [id], onDelete: Restrict)
+  @@index([academyId, status])
+  @@index([identityId, startedAt])
+}
+
+model AuthorizationChangeRecord {
+  id String @id @default(uuid()) @db.Uuid
+  actorIdentityId String @db.Uuid
+  targetIdentityId String @db.Uuid
+  operation String
+  priorState Json
+  resultingState Json
+  outcome ChangeOutcome
+  reasonCategory String
+  policyVersion String
+  createdAt DateTime @default(now())
+  actor Identity @relation("changeActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
+  target Identity @relation("changeTarget", fields: [targetIdentityId], references: [id], onDelete: Restrict)
+  @@index([targetIdentityId, createdAt])
+}
