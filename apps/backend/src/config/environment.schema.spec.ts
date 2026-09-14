@@ -1,12 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseBackendEnvironment } from './environment.schema.js';
+import { safeStartupDiagnostic } from './safe-diagnostic.js';
 
 const valid = {
   NODE_ENV: 'test',
   PORT: '3000',
   DATABASE_URL: 'postgresql://tester:password@localhost:5433/new_talents_test',
   ALLOWED_ORIGINS: 'http://localhost:8081,https://example.test',
+  JWT_ISSUER: 'new-talents.test',
+  JWT_AUDIENCE: 'new-talents-client',
+  JWT_SIGNING_SECRET: 'test-signing-secret-that-is-long-enough-to-be-safe',
+  AUTH_ACCESS_TOKEN_TTL_SECONDS: '900',
+  AUTH_REFRESH_TOKEN_TTL_SECONDS: '2592000',
+  AUTH_TEMPORARY_CREDENTIAL_TTL_SECONDS: '86400',
+  AUTH_ATTEMPT_LIMIT: '5',
+  AUTH_ATTEMPT_WINDOW_SECONDS: '900',
+  AUTH_TRUSTED_PROXY: 'false',
+  AUTH_SESSION_RETENTION_DAYS: '90',
+  AUTH_ATTEMPT_RETENTION_HOURS: '24',
 };
 
 describe('parseBackendEnvironment', () => {
@@ -17,6 +29,19 @@ describe('parseBackendEnvironment', () => {
       port: 3000,
       databaseUrl: valid.DATABASE_URL,
       allowedOrigins: ['http://localhost:8081', 'https://example.test'],
+      authentication: {
+        issuer: valid.JWT_ISSUER,
+        audience: valid.JWT_AUDIENCE,
+        signingSecret: valid.JWT_SIGNING_SECRET,
+        accessTokenTtlSeconds: 900,
+        refreshTokenTtlSeconds: 2_592_000,
+        temporaryCredentialTtlSeconds: 86_400,
+        attemptLimit: 5,
+        attemptWindowSeconds: 900,
+        trustedProxy: false,
+        sessionRetentionDays: 90,
+        attemptRetentionHours: 24,
+      },
     });
     expect(Object.isFrozen(configuration)).toBe(true);
     expect(Object.isFrozen(configuration.allowedOrigins)).toBe(true);
@@ -40,5 +65,27 @@ describe('parseBackendEnvironment', () => {
     try { parseBackendEnvironment(environment); } catch (error) { message = (error as Error).message; }
     expect(message).toContain(name);
     if (value && !['0', '65536', '3.5', '*'].includes(value)) expect(message).not.toContain(value);
+  });
+
+  it.each([
+    ['JWT_ISSUER', undefined], ['JWT_ISSUER', '__REQUIRED__'],
+    ['JWT_AUDIENCE', undefined], ['JWT_AUDIENCE', 'CHANGE_ME'],
+    ['JWT_SIGNING_SECRET', undefined], ['JWT_SIGNING_SECRET', 'short'],
+    ['AUTH_ACCESS_TOKEN_TTL_SECONDS', '901'],
+    ['AUTH_REFRESH_TOKEN_TTL_SECONDS', '2592001'],
+    ['AUTH_TEMPORARY_CREDENTIAL_TTL_SECONDS', '86401'],
+    ['AUTH_ATTEMPT_LIMIT', '6'], ['AUTH_ATTEMPT_WINDOW_SECONDS', '901'],
+    ['AUTH_TRUSTED_PROXY', 'sometimes'],
+    ['AUTH_SESSION_RETENTION_DAYS', '91'], ['AUTH_ATTEMPT_RETENTION_HOURS', '25'],
+  ])('fails closed for invalid authentication setting %s', (name, value) => {
+    expect(() => parseBackendEnvironment({ ...valid, [name]: value })).toThrow(`Invalid configuration: ${name}`);
+  });
+
+  it('uses a generic safe diagnostic and never echoes secret values', () => {
+    const secret = 'do-not-expose-this-signing-secret';
+    const diagnostic = safeStartupDiagnostic(new Error(`Invalid configuration: JWT_SIGNING_SECRET (${secret})`));
+    expect(diagnostic).toContain('JWT_SIGNING_SECRET');
+    expect(diagnostic).not.toContain(secret);
+    expect(safeStartupDiagnostic(new Error(secret))).toBe('Backend startup failed');
   });
 });

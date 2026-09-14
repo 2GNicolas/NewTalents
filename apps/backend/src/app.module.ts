@@ -6,6 +6,7 @@ import { RuntimeConfigModule } from './config/config.module.js';
 import { HealthModule } from './health/health.module.js';
 import { IdentityModule } from './identity/identity.module.js';
 import { PrivilegedChangesModule } from './privileged-changes/privileged-changes.module.js';
+import { AuthenticationModule } from './authentication/authentication.module.js';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PrivilegedChangesModule } from './privileged-changes/privileged-changes
     AcademyMembershipModule,
     AuthorizationModule,
     PrivilegedChangesModule,
+    AuthenticationModule,
   ],
 })
 export class AppModule {}
