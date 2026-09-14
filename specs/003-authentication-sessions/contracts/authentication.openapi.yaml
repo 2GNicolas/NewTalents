@@ -1,0 +1,196 @@
+openapi: 3.1.0
+info:
+  title: New Talents Authentication API
+  version: 1.0.0
+  description: Backend-only Feature 003 authentication operations. Frontend token persistence is deferred.
+servers:
+  - url: http://localhost:3000
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/TokenIssued' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/GenericAuthenticationFailure' }
+        '429': { $ref: '#/components/responses/Throttled' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+  /auth/initial-credential/replace:
+    post:
+      summary: Replace an initial temporary credential during first access
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TemporaryReplacementRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/TokenIssued' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/GenericAuthenticationFailure' }
+        '429': { $ref: '#/components/responses/Throttled' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+  /auth/refresh:
+    post:
+      summary: Rotate an active refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/TokenIssued' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/GenericAuthenticationFailure' }
+        '409': { $ref: '#/components/responses/RefreshReuse' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+  /auth/logout:
+    post:
+      summary: Revoke the current session family
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '204': { description: Current session closed }
+        '401': { $ref: '#/components/responses/GenericAuthenticationFailure' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+  /auth/logout-all:
+    post:
+      summary: Revoke all active session families for the authenticated identity
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '204': { description: All sessions closed }
+        '401': { $ref: '#/components/responses/GenericAuthenticationFailure' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+  /auth/credentials/provision:
+    post:
+      summary: Provision an initial temporary credential for an existing eligible identity
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CredentialProvisionRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/TemporaryCredentialIssued' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/GenericAuthenticationFailure' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ProvisioningUnavailable' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+  /auth/credentials/reissue:
+    post:
+      summary: Invalidate and reissue an unused initial temporary credential
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CredentialProvisionRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/TemporaryCredentialIssued' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/GenericAuthenticationFailure' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ProvisioningUnavailable' }
+        '500': { $ref: '#/components/responses/InternalFailure' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    TemporaryReplacementRequest:
+      type: object
+      additionalProperties: false
+      required: [email, temporaryCredential, newPassword]
+      properties:
+        email: { type: string, format: email }
+        temporaryCredential: { type: string, minLength: 12, maxLength: 128 }
+        newPassword: { type: string, minLength: 12, maxLength: 128 }
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string, minLength: 1 }
+    CredentialProvisionRequest:
+      type: object
+      additionalProperties: false
+      required: [identityId]
+      properties:
+        identityId: { type: string, format: uuid }
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string, const: Bearer }
+        expiresIn: { type: integer, const: 900 }
+    TemporaryCredentialResponse:
+      type: object
+      additionalProperties: false
+      required: [temporaryCredential, expiresIn]
+      properties:
+        temporaryCredential: { type: string }
+        expiresIn: { type: integer, const: 86400 }
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum: [invalid_request, authentication_failed, forbidden, throttled, refresh_reused, provisioning_unavailable, internal_error]
+  responses:
+    TokenIssued:
+      description: Tokens intentionally issued; response must not be cached.
+      headers:
+        Cache-Control: { schema: { type: string, const: no-store } }
+      content:
+        application/json: { schema: { $ref: '#/components/schemas/TokenResponse' } }
+    TemporaryCredentialIssued:
+      description: One-time temporary credential intentionally issued; response must not be cached.
+      headers:
+        Cache-Control: { schema: { type: string, const: no-store } }
+      content:
+        application/json: { schema: { $ref: '#/components/schemas/TemporaryCredentialResponse' } }
+    InvalidInput:
+      description: Input did not meet the request contract.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: invalid_request } } }
+    GenericAuthenticationFailure:
+      description: Generic non-enumerating authentication failure.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: authentication_failed } } }
+    Forbidden:
+      description: Authenticated actor lacks current authorization.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: forbidden } } }
+    Throttled:
+      description: Generic temporary authentication throttling.
+      headers:
+        Retry-After: { schema: { type: integer, minimum: 1 } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: throttled } } }
+    RefreshReuse:
+      description: A refresh token was previously consumed or superseded; its session family is revoked.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: refresh_reused } } }
+    ProvisioningUnavailable:
+      description: Existing eligible identity cannot receive a temporary credential.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: provisioning_unavailable } } }
+    InternalFailure:
+      description: Safe internal failure with no diagnostic detail.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: internal_error } } }
+

@@ -35,6 +35,49 @@ enum ChangeOutcome {
   FAILED
 }
 
+enum CredentialStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum TemporaryCredentialStatus {
+  ISSUED
+  CONSUMED
+  INVALIDATED
+  SUPERSEDED
+  EXPIRED
+}
+
+enum AuthenticationSessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum RefreshTokenStatus {
+  ISSUED
+  CONSUMED
+  REVOKED
+  EXPIRED
+}
+
+enum AuthenticationSecurityEventType {
+  LOGIN_SUCCEEDED
+  LOGIN_FAILED
+  LOGIN_THROTTLED
+  TEMPORARY_CREDENTIAL_PROVISIONED
+  TEMPORARY_CREDENTIAL_REISSUED
+  TEMPORARY_CREDENTIAL_REPLACED
+  REFRESH_ROTATED
+  REFRESH_REUSE_DETECTED
+  SESSION_REVOKED
+  SESSIONS_REVOKED
+  INITIALIZATION_SUCCEEDED
+  INITIALIZATION_DENIED
+  RECOVERY_SUCCEEDED
+  RECOVERY_DENIED
+}
+
 model Identity {
   id String @id @default(uuid()) @db.Uuid
   status IdentityStatus @default(ACTIVE)
@@ -47,6 +90,13 @@ model Identity {
   assignedMemberships AcademyMembership[] @relation("membershipAssignedBy")
   actorChanges AuthorizationChangeRecord[] @relation("changeActor")
   targetChanges AuthorizationChangeRecord[] @relation("changeTarget")
+  authenticationCredential AuthenticationCredential?
+  temporaryCredentials TemporaryCredential[] @relation("temporaryCredentialIdentity")
+  issuedTemporaryCredentials TemporaryCredential[] @relation("temporaryCredentialIssuer")
+  authenticationSessions AuthenticationSession[]
+  authenticationAttempts AuthenticationAttempt[]
+  authenticationSecurityEvents AuthenticationSecurityEvent[] @relation("authenticationSecurityEventIdentity")
+  actedAuthenticationSecurityEvents AuthenticationSecurityEvent[] @relation("authenticationSecurityEventActor")
 }
 
 model RoleAssignment {
@@ -97,4 +147,101 @@ model AuthorizationChangeRecord {
   actor Identity @relation("changeActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
   target Identity @relation("changeTarget", fields: [targetIdentityId], references: [id], onDelete: Restrict)
   @@index([targetIdentityId, createdAt])
+}
+
+model AuthenticationCredential {
+  id String @id @default(uuid()) @db.Uuid
+  identityId String @unique @db.Uuid
+  normalizedEmail String @unique
+  passwordHash String
+  status CredentialStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  activatedAt DateTime?
+  disabledAt DateTime?
+  identity Identity @relation(fields: [identityId], references: [id], onDelete: Restrict)
+}
+
+model TemporaryCredential {
+  id String @id @default(uuid()) @db.Uuid
+  identityId String @db.Uuid
+  issuedByIdentityId String? @db.Uuid
+  secretHash String
+  normalizedEmail String
+  status TemporaryCredentialStatus @default(ISSUED)
+  issuedAt DateTime @default(now())
+  expiresAt DateTime
+  consumedAt DateTime?
+  invalidatedAt DateTime?
+  supersededAt DateTime?
+  identity Identity @relation("temporaryCredentialIdentity", fields: [identityId], references: [id], onDelete: Restrict)
+  issuedBy Identity? @relation("temporaryCredentialIssuer", fields: [issuedByIdentityId], references: [id], onDelete: Restrict)
+  @@index([identityId, expiresAt])
+}
+
+model AuthenticationSession {
+  id String @id @default(uuid()) @db.Uuid
+  identityId String @db.Uuid
+  familyId String @db.Uuid
+  status AuthenticationSessionStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+  revocationReason String?
+  identity Identity @relation(fields: [identityId], references: [id], onDelete: Restrict)
+  refreshTokens RefreshTokenHistory[]
+  securityEvents AuthenticationSecurityEvent[]
+  @@index([identityId, status, expiresAt])
+  @@index([familyId, status])
+}
+
+model RefreshTokenHistory {
+  id String @id @default(uuid()) @db.Uuid
+  sessionId String @db.Uuid
+  digest String @unique
+  status RefreshTokenStatus @default(ISSUED)
+  issuedAt DateTime @default(now())
+  expiresAt DateTime
+  consumedAt DateTime?
+  revokedAt DateTime?
+  replacedAt DateTime?
+  predecessorId String? @unique @db.Uuid
+  session AuthenticationSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  predecessor RefreshTokenHistory? @relation("refreshTokenRotation", fields: [predecessorId], references: [id], onDelete: Restrict)
+  successor RefreshTokenHistory? @relation("refreshTokenRotation")
+  @@index([sessionId, status, expiresAt])
+}
+
+model AuthenticationAttempt {
+  id String @id @default(uuid()) @db.Uuid
+  identityId String? @db.Uuid
+  normalizedIdentityKeyDigest String
+  sourceAddressKeyDigest String
+  failureCount Int @default(0)
+  windowStartedAt DateTime @default(now())
+  windowEndsAt DateTime
+  clearedAt DateTime?
+  expiresAt DateTime?
+  identity Identity? @relation(fields: [identityId], references: [id], onDelete: Restrict)
+  @@index([normalizedIdentityKeyDigest, sourceAddressKeyDigest, windowEndsAt])
+  @@index([identityId, windowEndsAt])
+}
+
+model AuthenticationSecurityEvent {
+  id String @id @default(uuid()) @db.Uuid
+  type AuthenticationSecurityEventType
+  outcome ChangeOutcome
+  identityId String? @db.Uuid
+  actorIdentityId String? @db.Uuid
+  sessionId String? @db.Uuid
+  reasonCategory String?
+  details Json
+  createdAt DateTime @default(now())
+  identity Identity? @relation("authenticationSecurityEventIdentity", fields: [identityId], references: [id], onDelete: Restrict)
+  actorIdentity Identity? @relation("authenticationSecurityEventActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
+  session AuthenticationSession? @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  @@index([identityId, createdAt])
+  @@index([actorIdentityId, createdAt])
+  @@index([sessionId, createdAt])
 }

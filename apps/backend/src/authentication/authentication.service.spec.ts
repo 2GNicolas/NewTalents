@@ -1,0 +1,3 @@
+import { describe, expect, it } from 'vitest';
+import { AuthenticationService } from './authentication.service.js';
+describe('AuthenticationService', () => { it('provides a generic safe invalid outcome', async () => { const service = new AuthenticationService({ authenticationCredential: { findUnique: async () => null } } as never, {} as never, { throttled: async () => false, failed: async () => undefined } as never, {} as never, {} as never, {} as never); await expect(service.login({ email: 'nobody@example.test', password: 'invalid-password', source: { remoteAddress: '127.0.0.1' } })).resolves.toEqual({ outcome: 'invalid-credentials' }); }); });
