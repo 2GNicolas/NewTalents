@@ -6,11 +6,24 @@
     "orientation": "default",
     "scheme": "newtalents",
     "userInterfaceStyle": "automatic",
-    "platforms": ["ios", "android", "web"],
-    "plugins": ["expo-router"],
-    "web": { "bundler": "metro", "output": "static" },
-    "ios": { "supportsTablet": true },
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "plugins": [
+      "expo-router"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
     "android": {},
-    "experiments": { "typedRoutes": true }
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }
