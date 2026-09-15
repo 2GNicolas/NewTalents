@@ -1,0 +1,11 @@
+/* Chrome and other WebKit password managers otherwise paint saved credentials white. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f4f6eb !important;
+  -webkit-box-shadow: 0 0 0 1000px #1e211f inset !important;
+  box-shadow: 0 0 0 1000px #1e211f inset !important;
+  caret-color: #f4f6eb;
+  transition: background-color 9999s ease-out 0s;
+}
