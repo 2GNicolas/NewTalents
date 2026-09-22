@@ -20,6 +20,7 @@ export class TokenService {
       .setIssuedAt().setIssuer(this.configuration.authentication.issuer).setAudience(this.configuration.authentication.audience)
       .setExpirationTime(`${this.configuration.authentication.accessTokenTtlSeconds}s`).sign(this.key);
   }
+  get accessTokenTtlSeconds(): number { return this.configuration.authentication.accessTokenTtlSeconds; }
   async verifyAccessToken(token: unknown): Promise<Readonly<{ identityId: string; sessionId: string; tokenId: string }> | null> {
     if (typeof token !== 'string') return null;
     try {

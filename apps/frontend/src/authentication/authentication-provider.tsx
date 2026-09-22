@@ -20,6 +20,7 @@ export type AuthenticationProviderValue = Readonly<{
   refresh: () => Promise<void>;
   logout: (scope: LogoutScope) => Promise<void>;
   clearLocalSession: () => Promise<void>;
+  getAccessToken: () => string | null;
 }>;
 
 const AuthenticationContext = createContext<AuthenticationProviderValue | null>(null);
@@ -151,6 +152,8 @@ export function AuthenticationProvider({ children, dependencies }: PropsWithChil
     await clearLocalSession();
   }, [api, clearLocalSession, machine, storage, sync]);
 
+  const getAccessToken = useCallback(() => storage.getAccessToken(), [storage]);
+
   useEffect(() => {
     void restore();
     return () => {
@@ -160,7 +163,7 @@ export function AuthenticationProvider({ children, dependencies }: PropsWithChil
     };
   }, [coordinator, machine, restore]);
 
-  const value = useMemo<AuthenticationProviderValue>(() => Object.freeze({ state, restore, login, activateInitialAccess, prepareLogin, prepareActivation, continueAfterActivation, refresh, logout, clearLocalSession }), [activateInitialAccess, clearLocalSession, continueAfterActivation, login, logout, prepareActivation, prepareLogin, refresh, restore, state]);
+  const value = useMemo<AuthenticationProviderValue>(() => Object.freeze({ state, restore, login, activateInitialAccess, prepareLogin, prepareActivation, continueAfterActivation, refresh, logout, clearLocalSession, getAccessToken }), [activateInitialAccess, clearLocalSession, continueAfterActivation, getAccessToken, login, logout, prepareActivation, prepareLogin, refresh, restore, state]);
   return <AuthenticationContext.Provider value={value}>{children}</AuthenticationContext.Provider>;
 }
 

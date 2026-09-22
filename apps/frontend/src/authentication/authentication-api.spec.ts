@@ -20,6 +20,14 @@ describe('Feature 003 authentication API boundary', () => {
     ]));
   });
 
+  it('maps a successful refresh to replacement session material', async () => {
+    const fetcher = jest.fn().mockImplementation(() => Promise.resolve(response(200, issued, { 'cache-control': 'no-store' })));
+    const api = createAuthenticationApi({ apiBaseUrl: 'https://api.example.test/base/' }, fetcher);
+
+    await expect(api.refresh('test-refresh-not-usable')).resolves.toEqual({ kind: 'success', value: issued });
+    expect(fetcher.mock.calls[0]?.[0]).toBe('https://api.example.test/auth/refresh');
+    expect(fetcher.mock.calls[0]?.[1].headers.Authorization).toBeUndefined();
+  });
   it('sends login and activation JSON to the configured base URL and maps issued material', async () => {
     const fetcher = jest.fn().mockImplementation(() => Promise.resolve(response(200, issued, { 'cache-control': 'no-store' })));
     const api = createAuthenticationApi({ apiBaseUrl: 'https://api.example.test/base/' }, fetcher);

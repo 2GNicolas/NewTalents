@@ -17,6 +17,56 @@ describe('AuthorizationService', () => {
     expect(service.evaluate(request({ permission: 'foundation.tutor.related-resource', resource: { classification: 'protected', resourceId: 'r' }, subject: { kind: 'authenticated', identityId: id, status: 'ACTIVE', roles: [{ role: 'TUTOR', active: true }], tutorRelationship: { active: true, resourceId: 'r' } } })).allowed).toBe(true);
     expect(service.evaluate(request({ permission: 'foundation.tutor.related-resource', resource: { classification: 'protected', resourceId: 'r' }, subject: { kind: 'authenticated', identityId: id, status: 'ACTIVE', roles: [{ role: 'TUTOR', active: true }] } })).allowed).toBe(false);
   });
+  it('keeps legacy role governance intact while limiting USER to explicit particular passport permissions', () => {
+    const subject = (role: 'ADMINISTRATOR' | 'ANALYST' | 'USER' | 'TUTOR' | 'ACADEMY_USER') => ({
+      kind: 'authenticated' as const,
+      identityId: id,
+      status: 'ACTIVE' as const,
+      roles: [{ role, active: true }],
+    });
+
+    expect(service.evaluate(request({ subject: subject('ADMINISTRATOR') })).allowed).toBe(true);
+    expect(service.evaluate(request({ subject: subject('ANALYST') })).allowed).toBe(true);
+    expect(service.evaluate(request({ subject: subject('USER') })).allowed).toBe(false);
+    expect(service.evaluate(request({
+      permission: 'foundation.privileged.role-change',
+      subject: subject('ADMINISTRATOR'),
+    })).allowed).toBe(true);
+    expect(service.evaluate(request({
+      permission: 'foundation.privileged.role-change',
+      subject: subject('USER'),
+    })).allowed).toBe(false);
+
+    expect(service.evaluate(request({
+      permission: 'passport.particular.create',
+      subject: subject('USER'),
+    })).allowed).toBe(true);
+    expect(service.evaluate(request({
+      permission: 'passport.particular.create',
+      subject: subject('TUTOR'),
+    })).allowed).toBe(false);
+    expect(service.evaluate(request({
+      permission: 'passport.review',
+      subject: subject('USER'),
+    })).allowed).toBe(false);
+    expect(service.evaluate(request({
+      permission: 'passport.activate',
+      subject: subject('USER'),
+    })).allowed).toBe(false);
+    expect(service.evaluate(request({
+      permission: 'passport.academy.manage',
+      resource: { classification: 'protected', academyId: 'academy' },
+      subject: subject('USER'),
+    })).allowed).toBe(false);
+    expect(service.evaluate(request({
+      permission: 'passport.academy.manage',
+      resource: { classification: 'protected', academyId: 'academy' },
+      subject: {
+        ...subject('ACADEMY_USER'),
+        academyMembership: { active: true, academyId: 'academy' },
+      },
+    })).allowed).toBe(true);
+  });
   it('allows anonymous only with explicit public and minor authorization and denies malformed or unknown requests safely', () => {
     expect(service.evaluate({ version: '1', permission: 'foundation.public.read', resource: { classification: 'public', publicAuthorized: true, minorPublicAuthorized: true }, subject: { kind: 'anonymous' } })).toEqual({ allowed: true, policyVersion: '1' });
     expect(service.evaluate({ version: '1', permission: 'foundation.public.read', resource: { classification: 'protected', publicAuthorized: true }, subject: { kind: 'anonymous' } }).allowed).toBe(false);

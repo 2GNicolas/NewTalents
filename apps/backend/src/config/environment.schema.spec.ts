@@ -19,6 +19,9 @@ const valid = {
   AUTH_TRUSTED_PROXY: 'false',
   AUTH_SESSION_RETENTION_DAYS: '90',
   AUTH_ATTEMPT_RETENTION_HOURS: '24',
+  PASSPORT_DOCUMENT_HMAC_KEY: 'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=',
+  PASSPORT_NAME_DOB_HMAC_KEY: 'AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=',
+  PASSPORT_PRIVATE_ENCRYPTION_KEY: 'AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=',
 };
 
 describe('parseBackendEnvironment', () => {
@@ -41,6 +44,11 @@ describe('parseBackendEnvironment', () => {
         trustedProxy: false,
         sessionRetentionDays: 90,
         attemptRetentionHours: 24,
+      },
+      passport: {
+        documentHmacKey: valid.PASSPORT_DOCUMENT_HMAC_KEY,
+        nameDobHmacKey: valid.PASSPORT_NAME_DOB_HMAC_KEY,
+        privateEncryptionKey: valid.PASSPORT_PRIVATE_ENCRYPTION_KEY,
       },
     });
     expect(Object.isFrozen(configuration)).toBe(true);
@@ -78,6 +86,23 @@ describe('parseBackendEnvironment', () => {
     ['AUTH_TRUSTED_PROXY', 'sometimes'],
     ['AUTH_SESSION_RETENTION_DAYS', '91'], ['AUTH_ATTEMPT_RETENTION_HOURS', '25'],
   ])('fails closed for invalid authentication setting %s', (name, value) => {
+    expect(() => parseBackendEnvironment({ ...valid, [name]: value })).toThrow(`Invalid configuration: ${name}`);
+  });
+
+  it.each([
+    ['PASSPORT_DOCUMENT_HMAC_KEY', undefined],
+    ['PASSPORT_DOCUMENT_HMAC_KEY', ''],
+    ['PASSPORT_DOCUMENT_HMAC_KEY', '__REQUIRED__'],
+    ['PASSPORT_DOCUMENT_HMAC_KEY', 'CHANGE_ME'],
+    ['PASSPORT_DOCUMENT_HMAC_KEY', 'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE'],
+    ['PASSPORT_DOCUMENT_HMAC_KEY', 'not-a-valid-base64-key!'],
+    ['PASSPORT_NAME_DOB_HMAC_KEY', undefined],
+    ['PASSPORT_NAME_DOB_HMAC_KEY', '__REQUIRED__'],
+    ['PASSPORT_NAME_DOB_HMAC_KEY', 'not-a-valid-base64-key!'],
+    ['PASSPORT_PRIVATE_ENCRYPTION_KEY', undefined],
+    ['PASSPORT_PRIVATE_ENCRYPTION_KEY', 'CHANGE_ME'],
+    ['PASSPORT_PRIVATE_ENCRYPTION_KEY', 'not-a-valid-base64-key!'],
+  ])('fails closed for invalid passport key %s', (name, value) => {
     expect(() => parseBackendEnvironment({ ...valid, [name]: value })).toThrow(`Invalid configuration: ${name}`);
   });
 

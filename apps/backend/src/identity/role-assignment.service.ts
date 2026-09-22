@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service.js';
 
-export const functionalRoles = ['ADMINISTRATOR', 'ANALYST', 'TUTOR', 'ACADEMY_USER'] as const;
+export const functionalRoles = ['ADMINISTRATOR', 'ANALYST', 'USER', 'TUTOR', 'ACADEMY_USER'] as const;
 export type FunctionalRole = (typeof functionalRoles)[number];
 export type RoleAssignmentResult = Readonly<{ outcome: 'assigned' | 'revoked' | 'duplicate-active-role' | 'unknown-identity' | 'inactive-identity' | 'invalid' | 'not-found' | 'unavailable' }>;
 

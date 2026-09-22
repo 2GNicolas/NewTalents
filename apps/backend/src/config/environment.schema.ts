@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { parsePassportKey } from '../player-passport/player-private-identity/passport-keys.js';
+
 const placeholders = new Set(['__REQUIRED__', 'CHANGE_ME']);
 
 function required(name: string, value: unknown): string {
@@ -84,6 +86,11 @@ export type BackendRuntimeConfiguration = Readonly<{
     sessionRetentionDays: number;
     attemptRetentionHours: number;
   }>;
+  passport: Readonly<{
+    documentHmacKey: string;
+    nameDobHmacKey: string;
+    privateEncryptionKey: string;
+  }>;
 }>;
 
 export function parseBackendEnvironment(environment: Record<string, unknown>): BackendRuntimeConfiguration {
@@ -103,11 +110,17 @@ export function parseBackendEnvironment(environment: Record<string, unknown>): B
     sessionRetentionDays: parseExactPositiveInteger('AUTH_SESSION_RETENTION_DAYS', environment.AUTH_SESSION_RETENTION_DAYS, 90),
     attemptRetentionHours: parseExactPositiveInteger('AUTH_ATTEMPT_RETENTION_HOURS', environment.AUTH_ATTEMPT_RETENTION_HOURS, 24),
   });
+  const passport = Object.freeze({
+    documentHmacKey: parsePassportKey('PASSPORT_DOCUMENT_HMAC_KEY', environment.PASSPORT_DOCUMENT_HMAC_KEY),
+    nameDobHmacKey: parsePassportKey('PASSPORT_NAME_DOB_HMAC_KEY', environment.PASSPORT_NAME_DOB_HMAC_KEY),
+    privateEncryptionKey: parsePassportKey('PASSPORT_PRIVATE_ENCRYPTION_KEY', environment.PASSPORT_PRIVATE_ENCRYPTION_KEY),
+  });
   return Object.freeze({
     nodeEnv: parsedNodeEnvironment.data,
     port: parsePort(environment.PORT),
     databaseUrl: parseDatabaseUrl(environment.DATABASE_URL),
     allowedOrigins: parseAllowedOrigins(environment.ALLOWED_ORIGINS),
     authentication,
+    passport,
   });
 }
