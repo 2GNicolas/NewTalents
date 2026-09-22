@@ -18,6 +18,7 @@ enum RoleStatus {
 }
 
 enum FunctionalRole {
+  USER
   ADMINISTRATOR
   ANALYST
   TUTOR
@@ -78,6 +79,69 @@ enum AuthenticationSecurityEventType {
   RECOVERY_DENIED
 }
 
+enum PassportOrigin {
+  PARTICULAR
+  TUTOR
+  ACADEMY
+}
+
+enum PassportResponsibilityKind {
+  SELF
+  LEGAL_REPRESENTATIVE
+  ACADEMY
+}
+
+enum RepresentativeConfirmationStatus {
+  PENDING
+  CONSUMED
+  EXPIRED
+  REVOKED
+}
+
+enum PassportLifecycleState {
+  DRAFT
+  IN_REVIEW
+  RETURNED_FOR_CORRECTION
+  APPROVED
+  ACTIVE
+}
+
+enum DominantFoot {
+  LEFT
+  RIGHT
+  BOTH
+  UNDECLARED
+}
+
+enum PassportPossibleDuplicateStatus {
+  UNRESOLVED
+  RESOLVED
+}
+
+enum PassportDuplicateResolution {
+  PENDING_REVIEW
+  DIFFERENT_PLAYERS
+  CORRECTABLE
+  CONFIRMED_EXISTING_PLAYER
+}
+
+enum PassportLifecycleAction {
+  CREATED
+  INITIAL_TUTOR_RESPONSIBILITY_ESTABLISHED
+  EDITED
+  SUBMITTED
+  RETURNED_FOR_CORRECTION
+  POSSIBLE_DUPLICATE_RESOLVED
+  APPROVED
+  ACTIVATED
+}
+
+enum PassportLifecycleOutcome {
+  APPLIED
+  DENIED
+  FAILED
+}
+
 model Identity {
   id String @id @default(uuid()) @db.Uuid
   status IdentityStatus @default(ACTIVE)
@@ -97,6 +161,14 @@ model Identity {
   authenticationAttempts AuthenticationAttempt[]
   authenticationSecurityEvents AuthenticationSecurityEvent[] @relation("authenticationSecurityEventIdentity")
   actedAuthenticationSecurityEvents AuthenticationSecurityEvent[] @relation("authenticationSecurityEventActor")
+  createdPassports PlayerPassport[] @relation("passportCreator")
+  passportInitialResponsibilities InitialTutorResponsibility[] @relation("passportResponsibleTutor")
+  passportResponsibilities PassportResponsibility[] @relation("passportResponsibilityIdentity")
+  representativeConfirmations RepresentativeConfirmation[] @relation("representativeConfirmationIdentity")
+  reconciliationAudits HistoricalTutorReconciliationAudit[] @relation("reconciliationAuditActor")
+  passportReviewReturns PassportReviewReturn[] @relation("passportReturningAnalyst")
+  passportDuplicateResolutions PassportPossibleDuplicateSignal[] @relation("passportSignalResolver")
+  passportLifecycleEvents PassportLifecycleEvent[] @relation("passportEventActor")
 }
 
 model RoleAssignment {
@@ -115,7 +187,10 @@ model RoleAssignment {
 model Academy {
   id String @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now())
+  displayName String?
   memberships AcademyMembership[]
+  passports PlayerPassport[] @relation("passportOriginAcademy")
+  passportResponsibilities PassportResponsibility[]
 }
 
 model AcademyMembership {
@@ -244,4 +319,151 @@ model AuthenticationSecurityEvent {
   @@index([identityId, createdAt])
   @@index([actorIdentityId, createdAt])
   @@index([sessionId, createdAt])
+}
+
+model Player {
+  id String @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  passport PlayerPassport?
+  privateIdentity PlayerPrivateIdentity?
+  initialTutorResponsibility InitialTutorResponsibility?
+}
+
+model PlayerPrivateIdentity {
+  id String @id @default(uuid()) @db.Uuid
+  playerId String @unique @db.Uuid
+  encryptedLegalName String
+  encryptedDateOfBirth String
+  encryptedDocumentType String
+  encryptedDocumentNumber String
+  documentFingerprint String @unique
+  nameDobFingerprint String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  @@index([nameDobFingerprint])
+}
+
+model PlayerPassport {
+  id String @id @default(uuid()) @db.Uuid
+  playerId String @unique @db.Uuid
+  state PassportLifecycleState @default(DRAFT)
+  originKind PassportOrigin
+  position String
+  ageCategory String
+  city String
+  country String
+  dominantFoot DominantFoot
+  createdByIdentityId String @db.Uuid
+  originAcademyId String? @db.Uuid
+  version Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  creator Identity @relation("passportCreator", fields: [createdByIdentityId], references: [id], onDelete: Restrict)
+  originAcademy Academy? @relation("passportOriginAcademy", fields: [originAcademyId], references: [id], onDelete: Restrict)
+  responsibilities PassportResponsibility[]
+  reviewReturns PassportReviewReturn[]
+  possibleDuplicateSignals PassportPossibleDuplicateSignal[]
+  lifecycleEvents PassportLifecycleEvent[]
+  @@index([createdByIdentityId, state])
+  @@index([originAcademyId])
+  @@index([state])
+}
+
+model PassportResponsibility {
+  id String @id @default(uuid()) @db.Uuid
+  passportId String @db.Uuid
+  identityId String? @db.Uuid
+  academyId String? @db.Uuid
+  kind PassportResponsibilityKind
+  createdAt DateTime @default(now())
+  passport PlayerPassport @relation(fields: [passportId], references: [id], onDelete: Restrict)
+  identity Identity? @relation("passportResponsibilityIdentity", fields: [identityId], references: [id], onDelete: Restrict)
+  academy Academy? @relation(fields: [academyId], references: [id], onDelete: Restrict)
+  @@unique([passportId, kind, identityId])
+  @@index([identityId, kind])
+  @@index([academyId, kind])
+}
+
+model RepresentativeConfirmation {
+  id String @id @default(uuid()) @db.Uuid
+  passportId String? @db.Uuid
+  representativeIdentityId String @db.Uuid
+  encryptedLegalName String
+  encryptedDocumentType String
+  encryptedDocumentNumber String
+  encryptedRelationship String?
+  documentFingerprint String
+  playerDocumentBinding String
+  status RepresentativeConfirmationStatus @default(PENDING)
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  representative Identity @relation("representativeConfirmationIdentity", fields: [representativeIdentityId], references: [id], onDelete: Restrict)
+  @@index([representativeIdentityId, status, expiresAt])
+  @@index([playerDocumentBinding, status])
+}
+
+model HistoricalTutorReconciliationAudit {
+  id String @id @default(uuid()) @db.Uuid
+  actorIdentityId String @db.Uuid
+  legacyResponsibilityId String?
+  outcome String
+  reasonCategory String
+  createdAt DateTime @default(now())
+  actor Identity @relation("reconciliationAuditActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
+  @@index([actorIdentityId, createdAt])
+}
+
+model InitialTutorResponsibility {
+  id String @id @default(uuid()) @db.Uuid
+  playerId String @unique @db.Uuid
+  tutorIdentityId String @db.Uuid
+  createdAt DateTime @default(now())
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+  tutor Identity @relation("passportResponsibleTutor", fields: [tutorIdentityId], references: [id], onDelete: Restrict)
+  @@index([tutorIdentityId])
+}
+
+model PassportReviewReturn {
+  id String @id @default(uuid()) @db.Uuid
+  passportId String @db.Uuid
+  analystIdentityId String @db.Uuid
+  reason String
+  createdAt DateTime @default(now())
+  passport PlayerPassport @relation(fields: [passportId], references: [id], onDelete: Restrict)
+  analyst Identity @relation("passportReturningAnalyst", fields: [analystIdentityId], references: [id], onDelete: Restrict)
+  @@index([passportId, createdAt])
+}
+
+model PassportPossibleDuplicateSignal {
+  id String @id @default(uuid()) @db.Uuid
+  passportId String @db.Uuid
+  status PassportPossibleDuplicateStatus @default(UNRESOLVED)
+  resolution PassportDuplicateResolution @default(PENDING_REVIEW)
+  resolvedByIdentityId String? @db.Uuid
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  passport PlayerPassport @relation(fields: [passportId], references: [id], onDelete: Restrict)
+  resolvedBy Identity? @relation("passportSignalResolver", fields: [resolvedByIdentityId], references: [id], onDelete: Restrict)
+  @@index([passportId, status])
+}
+
+model PassportLifecycleEvent {
+  id String @id @default(uuid()) @db.Uuid
+  passportId String @db.Uuid
+  action PassportLifecycleAction
+  outcome PassportLifecycleOutcome
+  actorIdentityId String @db.Uuid
+  priorState PassportLifecycleState?
+  resultingState PassportLifecycleState?
+  details Json?
+  createdAt DateTime @default(now())
+  passport PlayerPassport @relation(fields: [passportId], references: [id], onDelete: Restrict)
+  actor Identity @relation("passportEventActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
+  @@index([passportId, createdAt])
+  @@index([actorIdentityId, createdAt])
 }
