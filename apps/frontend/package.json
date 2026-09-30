@@ -13,11 +13,12 @@
     "test:config": "jest --runInBand src/config/public-environment.spec.ts"
   },
   "dependencies": {
-    "@expo/metro-runtime": "~57.0.15",
-    "expo": "~57.0.21",
-    "expo-constants": "~57.0.17",
-    "expo-linking": "~57.0.9",
-    "expo-router": "~57.0.20",
+    "@expo/metro-runtime": "~57.0.16",
+    "expo": "~57.0.25",
+    "expo-constants": "~57.0.19",
+    "expo-document-picker": "~57.0.2",
+    "expo-linking": "~57.0.11",
+    "expo-router": "~57.0.23",
     "expo-secure-store": "~57.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",

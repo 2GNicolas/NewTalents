@@ -16,6 +16,8 @@ coverage/
 .expo/
 web-build/
 apps/backend/src/generated/
+.local/
+.runtime/
 
 # Test and tool output
 *.log

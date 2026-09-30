@@ -106,6 +106,11 @@ enum PassportLifecycleState {
   ACTIVE
 }
 
+enum PassportEnrichmentStatus {
+  COMPLETE
+  AWAITING_ANALYST_ENRICHMENT
+}
+
 enum DominantFoot {
   LEFT
   RIGHT
@@ -142,6 +147,110 @@ enum PassportLifecycleOutcome {
   FAILED
 }
 
+enum RegistrationRequestType {
+  PERSONAL_ADULT
+  REPRESENTED_MINOR
+  FORMAL_ACADEMY
+  NATURAL_PERSON_ACADEMY
+  ADDITIONAL_ACADEMY_ACCOUNT
+  ACADEMY_ADULT_PLAYER
+  ACADEMY_MINOR_PLAYER
+}
+
+enum RegistrationRequestStatus {
+  DRAFT
+  SUBMITTED
+  REQUIRES_CORRECTION
+  APPROVED
+  REJECTED
+}
+
+enum RegistrationApplicantAccessStatus {
+  PENDING_ONBOARDING
+  APPROVED
+  REJECTED
+}
+
+enum EvidenceStatus {
+  QUARANTINED
+  SCANNING
+  CLEAN
+  REJECTED
+  REPLACED
+  DELETION_PENDING
+  DELETED
+}
+
+enum ApprovalExecutionStatus {
+  NONE
+  PREPARED
+  DELETING_EVIDENCE
+  READY_TO_FINALIZE
+  FINALIZED
+  RECOVERY_REQUIRED
+}
+
+enum EvidenceDeletionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  RECOVERY_REQUIRED
+}
+
+enum RegistrationEvidenceCategory {
+  IDENTITY_FRONT
+  IDENTITY_BACK
+  MINOR_CIVIL_IDENTITY
+  REPRESENTATION_AUTHORITY
+  RUT
+  EXISTENCE_CERTIFICATE
+  OPERATION_PROOF
+  RESPONSIBLE_AUTHORITY
+  ADULT_AUTHORIZATION
+  ACADEMY_ACCOUNT_AUTHORIZATION
+}
+
+enum RegistrationConsentType {
+  PRIVACY
+  TRUTHFULNESS
+  SELF_ACTION
+  REPRESENTATION
+  MINOR_TREATMENT
+  ACADEMY_PRESENTATION
+}
+
+enum RegistrationRelationshipKind {
+  MOTHER
+  FATHER
+  LEGAL_GUARDIAN
+}
+
+enum RegistrationProofOfOperationCategory {
+  RUT
+  MUNICIPAL_OR_SPORT_CERTIFICATION
+  PLACE_USE_AUTHORIZATION
+  OPERATION_CONTRACT_OR_REGISTER
+  OTHER_CONTROLLED
+}
+
+enum RegistrationReviewDecisionKind {
+  CORRECTION_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum RegistrationDuplicateSignalStatus {
+  OPEN
+  DISTINCT
+  CONFIRMED_CONFLICT
+}
+
+enum RegistrationRequestEventOutcome {
+  APPLIED
+  DENIED
+  FAILED
+}
+
 model Identity {
   id String @id @default(uuid()) @db.Uuid
   status IdentityStatus @default(ACTIVE)
@@ -169,6 +278,17 @@ model Identity {
   passportReviewReturns PassportReviewReturn[] @relation("passportReturningAnalyst")
   passportDuplicateResolutions PassportPossibleDuplicateSignal[] @relation("passportSignalResolver")
   passportLifecycleEvents PassportLifecycleEvent[] @relation("passportEventActor")
+  ownedRegistrationRequests RegistrationRequest[] @relation("registrationRequestOwner")
+  registrationApplicantAccesses RegistrationApplicantAccess[] @relation("registrationApplicantAccessIdentity")
+  registrationApplicants RegistrationRequestApplicant[] @relation("registrationApplicantIdentity")
+  registrationRepresentatives RegistrationRequestRepresentative[] @relation("registrationRepresentativeIdentity")
+  registrationEvents RegistrationRequestEvent[] @relation("registrationEventActor")
+  registrationCorrections RegistrationCorrectionRequest[] @relation("registrationCorrectionAdministrator")
+  registrationReviewDecisions RegistrationReviewDecision[] @relation("registrationDecisionAdministrator")
+  registrationDossierConfirmations RegistrationManualDossierConfirmation[] @relation("registrationDossierAdministrator")
+  registrationDuplicateResolutions RegistrationPrivateDuplicateSignal[] @relation("registrationDuplicateResolver")
+  registrationEvidenceAccessAudits RegistrationEvidenceAccessAudit[] @relation("registrationEvidenceAccessActor")
+  registrationRequestIdempotencyRecords RegistrationRequestIdempotencyRecord[] @relation("registrationIdempotencyActor")
 }
 
 model RoleAssignment {
@@ -191,6 +311,7 @@ model Academy {
   memberships AcademyMembership[]
   passports PlayerPassport[] @relation("passportOriginAcademy")
   passportResponsibilities PassportResponsibility[]
+  registrationRequests RegistrationRequest[] @relation("registrationRequestAcademy")
 }
 
 model AcademyMembership {
@@ -328,6 +449,7 @@ model Player {
   passport PlayerPassport?
   privateIdentity PlayerPrivateIdentity?
   initialTutorResponsibility InitialTutorResponsibility?
+  registrationRequestPlayers RegistrationRequestPlayer[]
 }
 
 model PlayerPrivateIdentity {
@@ -349,6 +471,7 @@ model PlayerPassport {
   id String @id @default(uuid()) @db.Uuid
   playerId String @unique @db.Uuid
   state PassportLifecycleState @default(DRAFT)
+  enrichmentStatus PassportEnrichmentStatus @default(COMPLETE)
   originKind PassportOrigin
   position String
   ageCategory String
@@ -466,4 +589,414 @@ model PassportLifecycleEvent {
   actor Identity @relation("passportEventActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
   @@index([passportId, createdAt])
   @@index([actorIdentityId, createdAt])
+}
+
+model RegistrationRequest {
+  id String @id @default(uuid()) @db.Uuid
+  type RegistrationRequestType
+  status RegistrationRequestStatus @default(DRAFT)
+  ownerIdentityId String? @db.Uuid
+  academyContextId String? @db.Uuid
+  version Int @default(0)
+  submittedAt DateTime?
+  decidedAt DateTime?
+  approvalExecutionStatus ApprovalExecutionStatus @default(NONE)
+  latestSafeReason String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner Identity? @relation("registrationRequestOwner", fields: [ownerIdentityId], references: [id], onDelete: Restrict)
+  academyContext Academy? @relation("registrationRequestAcademy", fields: [academyContextId], references: [id], onDelete: Restrict)
+  applicantAccess RegistrationApplicantAccess?
+  applicants RegistrationRequestApplicant[]
+  players RegistrationRequestPlayer[]
+  representatives RegistrationRequestRepresentative[]
+  personalAdultDetail PersonalAdultRequestDetail?
+  representedMinorDetail RepresentedMinorRequestDetail?
+  formalAcademyDetail FormalAcademyRequestDetail?
+  naturalPersonAcademyDetail NaturalPersonAcademyRequestDetail?
+  additionalAcademyAccountDetail AdditionalAcademyAccountRequestDetail?
+  academyAdultPlayerDetail AcademyAdultPlayerRequestDetail?
+  academyMinorPlayerDetail AcademyMinorPlayerRequestDetail?
+  evidenceItems RegistrationEvidenceItem[]
+  consents RegistrationConsentRecord[]
+  corrections RegistrationCorrectionRequest[]
+  decisions RegistrationReviewDecision[]
+  dossierConfirmations RegistrationManualDossierConfirmation[]
+  approvalExecutions RegistrationApprovalExecution[]
+  deletionRecords RegistrationEvidenceDeletionRecord[]
+  events RegistrationRequestEvent[]
+  duplicateSignals RegistrationPrivateDuplicateSignal[]
+  evidenceAccessAudits RegistrationEvidenceAccessAudit[]
+  idempotencyRecords RegistrationRequestIdempotencyRecord[]
+  exactIdentifierClaims RegistrationExactIdentifierClaim[]
+  @@index([ownerIdentityId, status, updatedAt])
+  @@index([academyContextId, status, updatedAt])
+  @@index([type, status, submittedAt])
+}
+
+model RegistrationExactIdentifierClaim {
+  id String @id @default(uuid()) @db.Uuid
+  claimKey String @unique
+  field String
+  requestId String @db.Uuid
+  createdAt DateTime @default(now())
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@index([requestId])
+}
+
+model RegistrationApplicantAccess {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @unique @db.Uuid
+  identityId String @db.Uuid
+  status RegistrationApplicantAccessStatus @default(PENDING_ONBOARDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  identity Identity @relation("registrationApplicantAccessIdentity", fields: [identityId], references: [id], onDelete: Restrict)
+  @@index([identityId, status])
+}
+
+model RegistrationRequestApplicant {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  identityId String? @db.Uuid
+  encryptedLegalName String
+  encryptedDateOfBirth String
+  encryptedDocumentType String
+  encryptedDocumentNumber String
+  documentFingerprint String
+  nameDobFingerprint String
+  encryptedEmail String?
+  emailFingerprint String?
+  encryptedPhone String?
+  phoneFingerprint String?
+  derivedAdult Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  identity Identity? @relation("registrationApplicantIdentity", fields: [identityId], references: [id], onDelete: Restrict)
+  personalAdultDetails PersonalAdultRequestDetail[] @relation("personalAdultApplicant")
+  representedMinorDetails RepresentedMinorRequestDetail[] @relation("representedMinorApplicant")
+  formalAcademyDetails FormalAcademyRequestDetail[] @relation("formalAcademyResponsible")
+  naturalPersonAcademyDetails NaturalPersonAcademyRequestDetail[] @relation("naturalAcademyResponsible")
+  additionalAccountDetails AdditionalAcademyAccountRequestDetail[] @relation("additionalAccountApplicant")
+  @@index([requestId])
+  @@unique([requestId, documentFingerprint])
+  @@index([nameDobFingerprint])
+  @@index([emailFingerprint])
+}
+
+model RegistrationRequestPlayer {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  linkedPlayerId String? @db.Uuid
+  encryptedLegalName String
+  encryptedDateOfBirth String
+  encryptedDocumentType String
+  encryptedDocumentNumber String
+  documentFingerprint String
+  nameDobFingerprint String
+  encryptedCountry String
+  encryptedCity String
+  derivedAdult Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  linkedPlayer Player? @relation(fields: [linkedPlayerId], references: [id], onDelete: Restrict)
+  personalAdultDetails PersonalAdultRequestDetail[] @relation("personalAdultPlayer")
+  representedMinorDetails RepresentedMinorRequestDetail[] @relation("representedMinorPlayer")
+  academyAdultPlayerDetails AcademyAdultPlayerRequestDetail[] @relation("academyAdultPlayer")
+  academyMinorPlayerDetails AcademyMinorPlayerRequestDetail[] @relation("academyMinorPlayer")
+  @@index([requestId])
+  @@unique([requestId, documentFingerprint])
+  @@index([nameDobFingerprint])
+}
+
+model RegistrationRequestRepresentative {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  identityId String? @db.Uuid
+  encryptedLegalName String
+  encryptedDocumentType String
+  encryptedDocumentNumber String
+  documentFingerprint String
+  encryptedPhone String
+  phoneFingerprint String
+  relationship RegistrationRelationshipKind
+  authorityDeclared Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  identity Identity? @relation("registrationRepresentativeIdentity", fields: [identityId], references: [id], onDelete: Restrict)
+  academyMinorPlayerDetails AcademyMinorPlayerRequestDetail[] @relation("academyMinorRepresentative")
+  @@index([requestId])
+  @@unique([requestId, documentFingerprint])
+}
+
+model PersonalAdultRequestDetail {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @unique @db.Uuid
+  applicantId String @db.Uuid
+  playerId String @db.Uuid
+  actingForSelf Boolean
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  applicant RegistrationRequestApplicant @relation("personalAdultApplicant", fields: [applicantId], references: [id], onDelete: Restrict)
+  player RegistrationRequestPlayer @relation("personalAdultPlayer", fields: [playerId], references: [id], onDelete: Restrict)
+}
+
+model RepresentedMinorRequestDetail {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @unique @db.Uuid
+  applicantId String @db.Uuid
+  playerId String @db.Uuid
+  relationship RegistrationRelationshipKind
+  authorityDeclared Boolean
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  applicant RegistrationRequestApplicant @relation("representedMinorApplicant", fields: [applicantId], references: [id], onDelete: Restrict)
+  player RegistrationRequestPlayer @relation("representedMinorPlayer", fields: [playerId], references: [id], onDelete: Restrict)
+}
+
+model FormalAcademyRequestDetail {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @unique @db.Uuid
+  responsibleApplicantId String @db.Uuid
+  encryptedAcademyName String
+  academyNameFingerprint String
+  encryptedCountry String
+  encryptedCity String
+  encryptedOrganizationType String
+  encryptedNit String
+  nitFingerprint String
+  authorityDeclared Boolean
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  responsibleApplicant RegistrationRequestApplicant @relation("formalAcademyResponsible", fields: [responsibleApplicantId], references: [id], onDelete: Restrict)
+  @@index([academyNameFingerprint])
+  @@unique([requestId, nitFingerprint])
+}
+
+model NaturalPersonAcademyRequestDetail {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @unique @db.Uuid
+  responsibleApplicantId String @db.Uuid
+  encryptedAcademyName String
+  academyNameFingerprint String
+  encryptedCountry String
+  encryptedCity String
+  encryptedTrainingPlace String?
+  operationDeclared Boolean
+  proofCategories RegistrationProofOfOperationCategory[]
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  responsibleApplicant RegistrationRequestApplicant @relation("naturalAcademyResponsible", fields: [responsibleApplicantId], references: [id], onDelete: Restrict)
+  @@index([academyNameFingerprint])
+}
+
+model AdditionalAcademyAccountRequestDetail {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @unique @db.Uuid
+  applicantId String @db.Uuid
+  encryptedFunction String
+  responsibleAuthorization Boolean
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  applicant RegistrationRequestApplicant @relation("additionalAccountApplicant", fields: [applicantId], references: [id], onDelete: Restrict)
+}
+
+model AcademyAdultPlayerRequestDetail {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @unique @db.Uuid
+  playerId String @db.Uuid
+  adultAuthorization Boolean
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  player RegistrationRequestPlayer @relation("academyAdultPlayer", fields: [playerId], references: [id], onDelete: Restrict)
+}
+
+model AcademyMinorPlayerRequestDetail {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @unique @db.Uuid
+  playerId String @db.Uuid
+  representativeId String @db.Uuid
+  authorityDeclared Boolean
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  player RegistrationRequestPlayer @relation("academyMinorPlayer", fields: [playerId], references: [id], onDelete: Restrict)
+  representative RegistrationRequestRepresentative @relation("academyMinorRepresentative", fields: [representativeId], references: [id], onDelete: Restrict)
+}
+
+model RegistrationEvidenceItem {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  category RegistrationEvidenceCategory
+  objectKey String @unique
+  declaredMime String
+  detectedMime String?
+  sizeBytes Int
+  contentDigest String
+  status EvidenceStatus @default(QUARANTINED)
+  scannerResultCode String?
+  replacedById String? @unique @db.Uuid
+  uploadedAt DateTime @default(now())
+  deletedAt DateTime?
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  replacedBy RegistrationEvidenceItem? @relation("registrationEvidenceReplacement", fields: [replacedById], references: [id], onDelete: Restrict)
+  replaces RegistrationEvidenceItem? @relation("registrationEvidenceReplacement")
+  deletionRecords RegistrationEvidenceDeletionRecord[]
+  accessAudits RegistrationEvidenceAccessAudit[]
+  @@index([requestId, category, status])
+}
+
+model RegistrationEvidenceAccessAudit {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  evidenceItemId String @db.Uuid
+  actorIdentityId String @db.Uuid
+  category RegistrationEvidenceCategory
+  outcome String
+  createdAt DateTime @default(now())
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  evidenceItem RegistrationEvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Restrict)
+  actor Identity @relation("registrationEvidenceAccessActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
+  @@index([requestId, createdAt])
+  @@index([evidenceItemId, createdAt])
+  @@index([actorIdentityId, createdAt])
+}
+
+model RegistrationConsentRecord {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  type RegistrationConsentType
+  textVersion String
+  actorIdentityId String? @db.Uuid
+  scopeCategory String
+  requestVersion Int
+  acceptedAt DateTime @default(now())
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@unique([requestId, type, requestVersion])
+}
+
+model RegistrationCorrectionRequest {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  requestVersion Int
+  correctionTargets String[]
+  safeReason String
+  administratorIdentityId String @db.Uuid
+  createdAt DateTime @default(now())
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  administrator Identity @relation("registrationCorrectionAdministrator", fields: [administratorIdentityId], references: [id], onDelete: Restrict)
+  @@index([requestId, requestVersion])
+}
+
+model RegistrationReviewDecision {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  requestVersion Int
+  kind RegistrationReviewDecisionKind
+  administratorIdentityId String @db.Uuid
+  safeReason String?
+  internalCode String?
+  idempotencyKey String @db.Uuid
+  createdAt DateTime @default(now())
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  administrator Identity @relation("registrationDecisionAdministrator", fields: [administratorIdentityId], references: [id], onDelete: Restrict)
+  @@unique([administratorIdentityId, idempotencyKey])
+  @@index([requestId, requestVersion, kind])
+}
+
+model RegistrationManualDossierConfirmation {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  requestVersion Int
+  administratorIdentityId String @db.Uuid
+  transferredCategories RegistrationEvidenceCategory[]
+  declarationVersion String
+  confirmedAt DateTime @default(now())
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  administrator Identity @relation("registrationDossierAdministrator", fields: [administratorIdentityId], references: [id], onDelete: Restrict)
+  @@unique([requestId, requestVersion])
+}
+
+model RegistrationApprovalExecution {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  requestVersion Int
+  status ApprovalExecutionStatus @default(PREPARED)
+  idempotencyKey String @db.Uuid
+  leaseUntil DateTime?
+  attempts Int @default(0)
+  resultReferences Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  finalizedAt DateTime?
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  @@unique([requestId, requestVersion])
+  @@unique([idempotencyKey])
+  @@index([status, leaseUntil])
+}
+
+model RegistrationEvidenceDeletionRecord {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  requestVersion Int
+  evidenceItemId String @db.Uuid
+  status EvidenceDeletionStatus @default(PENDING)
+  attempts Int @default(0)
+  nextAttemptAt DateTime?
+  leaseUntil DateTime?
+  lastSafeErrorCode String?
+  verifiedAbsentAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  evidenceItem RegistrationEvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Restrict)
+  @@unique([evidenceItemId, requestVersion])
+  @@index([status, nextAttemptAt, leaseUntil])
+}
+
+model RegistrationRequestEvent {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  sequence Int
+  requestVersion Int
+  actorIdentityId String? @db.Uuid
+  action String
+  priorStatus RegistrationRequestStatus?
+  resultingStatus RegistrationRequestStatus?
+  safeCategory String?
+  outcome RegistrationRequestEventOutcome
+  createdAt DateTime @default(now())
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  actor Identity? @relation("registrationEventActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
+  @@unique([requestId, sequence])
+  @@index([requestId, createdAt])
+  @@index([actorIdentityId, createdAt])
+}
+
+model RegistrationRequestIdempotencyRecord {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  actorIdentityId String? @db.Uuid
+  action String
+  idempotencyKey String @db.Uuid
+  expectedVersion Int
+  resultingVersion Int
+  resultSnapshot Json
+  createdAt DateTime @default(now())
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  actor Identity? @relation("registrationIdempotencyActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
+  @@unique([requestId, action, idempotencyKey])
+  @@index([actorIdentityId, createdAt])
+  @@index([requestId, resultingVersion])
+}
+
+model RegistrationPrivateDuplicateSignal {
+  id String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  status RegistrationDuplicateSignalStatus @default(OPEN)
+  signalType String
+  encryptedCandidateReference String?
+  resolvedByIdentityId String? @db.Uuid
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  request RegistrationRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  resolvedBy Identity? @relation("registrationDuplicateResolver", fields: [resolvedByIdentityId], references: [id], onDelete: Restrict)
+  @@index([requestId, status])
 }

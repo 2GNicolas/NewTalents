@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it, vi } from 'vitest';
 
 import { PassportAuthorizationAdapter } from './passport-authorization.adapter.js';
+import { AuthorizationService } from '../../authorization/authorization.service.js';
 
 const identityId = '11111111-1111-4111-8111-111111111111';
 const passportId = '44444444-4444-4444-8444-444444444444';
@@ -209,5 +210,19 @@ describe('PassportAuthorizationAdapter', () => {
     const authorization = { evaluate: vi.fn() };
     const adapter = new PassportAuthorizationAdapter(prisma as never, authorization as never);
     await expect(adapter.authorize({ identityId, permission: 'passport.tutor.manage', passportId })).resolves.toMatchObject({ allowed: false });
+  });
+
+  it('does not convert PENDING_ONBOARDING access into passport or product authority', async () => {
+    const prisma = {
+      identity: { findUnique: vi.fn().mockResolvedValue({ status: 'ACTIVE', roleAssignments: [] }) },
+      academyMembership: { findFirst: vi.fn() },
+      playerPassport: { findUnique: vi.fn() },
+      initialTutorResponsibility: { findUnique: vi.fn() },
+    };
+    const authorization = new AuthorizationService();
+    const adapter = new PassportAuthorizationAdapter(prisma as never, authorization);
+
+    await expect(adapter.authorize({ identityId, permission: 'passport.particular.create' })).resolves.toEqual({ allowed: false, reason: 'no-active-role', policyVersion: '1' });
+    expect(prisma.playerPassport.findUnique).not.toHaveBeenCalled();
   });
 });

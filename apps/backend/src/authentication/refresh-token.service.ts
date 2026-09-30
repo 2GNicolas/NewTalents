@@ -3,9 +3,10 @@ import { PrismaService } from '../database/prisma.service.js';
 import { AuthenticationTransactionService } from './authentication-transaction.service.js';
 import { TokenService } from './token.service.js';
 import { SecurityEventService } from './security-event.service.js';
+import { projectSessionAccess, type SessionAccessProjection } from './session-access.projection.js';
 
 export type RefreshResult =
-  | Readonly<{ outcome: 'rotated'; refreshToken: string; accessToken: string; expiresIn: number }>
+  | Readonly<{ outcome: 'rotated'; refreshToken: string; accessToken: string; expiresIn: number; access: SessionAccessProjection }>
   | Readonly<{ outcome: 'denied' | 'unavailable' }>;
 
 @Injectable()
@@ -34,7 +35,7 @@ export class RefreshTokenService {
     try {
       return await this.transactions.execute(async (tx) => {
         const digest = this.tokens.digestRefreshToken(raw);
-        const current = await tx.refreshTokenHistory.findUnique({ where: { digest }, include: { session: true } });
+        const current = await tx.refreshTokenHistory.findUnique({ where: { digest }, include: { session: { include: { identity: { select: { roleAssignments: { where: { status: 'ACTIVE' }, select: { id: true, role: true } }, memberships: { where: { status: 'ACTIVE' }, select: { academyId: true, status: true } }, registrationApplicantAccesses: { where: { status: 'PENDING_ONBOARDING' }, select: { requestId: true, status: true, request: { select: { status: true } } } } } } } } } });
         if (!current || current.status !== 'ISSUED' || current.expiresAt <= new Date() || current.session.status !== 'ACTIVE') {
           if (current) {
             await tx.authenticationSession.updateMany({
@@ -72,6 +73,7 @@ export class RefreshTokenService {
           refreshToken: successor,
           accessToken,
           expiresIn: this.tokens.accessTokenTtlSeconds,
+          access: projectSessionAccess(current.session.identity),
         } as const;
       });
     } catch {

@@ -1,0 +1,26 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+
+import { useAuthentication } from '../../../../src/authentication/authentication-provider';
+import { AdminDossierApproval, type ApprovalViewState } from '../../../../src/registration-requests/admin/admin-dossier-approval';
+import { createRegistrationRequestApi, type AdminRegistrationReview } from '../../../../src/registration-requests/registration-request-api';
+
+const previewReview: AdminRegistrationReview = { id: '11111111-1111-4111-8111-111111111111', type: 'PERSONAL_ADULT', status: 'SUBMITTED', version: 3, versionFresh: true, approvalExecutionStatus: 'RECOVERY_REQUIRED', createdAt: '2026-09-28T12:00:00.000Z', structuredData: { applicants: [{ legalName: 'Valentina Torres' }], players: [], representatives: [], detail: {} }, evidence: [{ id: 'a', category: 'IDENTITY_FRONT', status: 'DELETION_PENDING', sizeBytes: 100 }, { id: 'b', category: 'IDENTITY_BACK', status: 'DELETION_PENDING', sizeBytes: 100 }], consents: [], duplicateReview: { state: 'CLEAR', canApprove: true }, capabilities: ['registration.review.confirm-dossier', 'registration.review.retry-deletion'], history: [], deletion: { status: 'RECOVERY_REQUIRED', totalItems: 2, completedItems: 1 } };
+const key = () => globalThis.crypto?.randomUUID?.() ?? `00000000-0000-4000-8000-${Date.now().toString().padStart(12, '0').slice(-12)}`;
+export function approvalViewState(review: AdminRegistrationReview): ApprovalViewState { if (review.status === 'APPROVED') return 'approved'; if (review.approvalExecutionStatus === 'RECOVERY_REQUIRED') return 'recovery-required'; if (review.approvalExecutionStatus === 'DELETING_EVIDENCE') return 'pending-deletion'; return 'ready'; }
+
+export default function AdminApprovalScreen() {
+  const params = useLocalSearchParams<{ requestId?: string; preview?: string }>(); const router = useRouter(); const authentication = useAuthentication(); const preview = params.preview === 'desktop' || params.preview === 'mobile';
+  const api = useMemo(() => createRegistrationRequestApi({ getAccessToken: authentication.getAccessToken }), [authentication.getAccessToken]); const [review, setReview] = useState<AdminRegistrationReview | null>(preview ? previewReview : null); const [state, setState] = useState<ApprovalViewState>(preview ? 'recovery-required' : 'ready'); const [busy, setBusy] = useState(false); const [error, setError] = useState<string>(); const approvalKey = useRef(key());
+  useEffect(() => { if (preview || !params.requestId) return; let active = true; void api.readAdmin(params.requestId).then((result) => { if (!active) return; if (result.kind === 'success') { setReview(result.value); setState(approvalViewState(result.value)); } else setError('No pudimos abrir esta solicitud.'); }); return () => { active = false; }; }, [api, params.requestId, preview]);
+  useEffect(() => {
+    if (preview || !review || state !== 'pending-deletion') return;
+    const interval = setInterval(() => { void api.readAdmin(review.id).then((result) => { if (result.kind === 'success') { setReview(result.value); setState(approvalViewState(result.value)); } }); }, 2000);
+    return () => clearInterval(interval);
+  }, [api, preview, review?.id, state]);
+  if (error && !review) return <View accessibilityLiveRegion="assertive"><Text>{error}</Text></View>; if (!review) return <ActivityIndicator accessibilityLabel="Cargando aprobación" />;
+  const approve = async (value: { declarationVersion: string; categories: readonly string[] }) => { if (!api.approveAdmin) return setError('La operación no está disponible.'); setBusy(true); setError(undefined); const result = await api.approveAdmin(review.id, { expectedVersion: review.version, idempotencyKey: approvalKey.current, manualDossierConfirmation: { confirmed: true, declarationVersion: value.declarationVersion, categories: value.categories } }); setBusy(false); if (result.kind !== 'success') return setError(result.kind === 'version-conflict' ? 'La solicitud cambió. Recarga antes de aprobar.' : 'No pudimos continuar la aprobación.'); setError(undefined); setState(result.value.outcome === 'approved' ? 'approved' : result.value.outcome === 'recovery-required' || result.value.outcome === 'recoverable-failure' ? 'recovery-required' : 'pending-deletion'); const latest = await api.readAdmin(review.id); if (latest.kind === 'success') setReview(latest.value); };
+  const retry = async () => { if (!api.retryAdminDeletion) return setError('El reintento no está disponible.'); setBusy(true); const result = await api.retryAdminDeletion(review.id, { expectedVersion: review.version, idempotencyKey: key() }); setBusy(false); result.kind === 'success' ? setState('pending-deletion') : setError('No pudimos reiniciar la eliminación segura.'); };
+  return <AdminDossierApproval evidenceCategories={review.evidence.map((item) => item.category)} state={state} busy={busy} error={error} previewMode={preview ? params.preview as 'desktop' | 'mobile' : undefined} onBack={() => router.back()} onApprove={(value) => void approve(value)} onRetryDeletion={() => void retry()} />;
+}

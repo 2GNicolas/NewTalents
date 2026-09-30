@@ -8,6 +8,7 @@ import { IdentityModule } from './identity/identity.module.js';
 import { PrivilegedChangesModule } from './privileged-changes/privileged-changes.module.js';
 import { AuthenticationModule } from './authentication/authentication.module.js';
 import { PlayerPassportModule } from './player-passport/player-passport.module.js';
+import { RegistrationRequestsModule } from './registration-requests/registration-requests.module.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PlayerPassportModule } from './player-passport/player-passport.module.j
     PrivilegedChangesModule,
     AuthenticationModule,
     PlayerPassportModule,
+    RegistrationRequestsModule,
   ],
 })
 export class AppModule {}
