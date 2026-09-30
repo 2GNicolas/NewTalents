@@ -1,5 +1,7 @@
 # Phase 7 visual and accessibility QA — T087
 
+> Image names are retained as historical trace identifiers; reference and runtime-capture binaries are not stored in Git.
+
 Date: 2026-09-25. Runtime: Expo Web development build, Chrome headless CDP, DPR 1. The first fourteen rows reuse the already-approved T077–T084 captures because their shared journey shell did not materially change. The two status rows were captured after the final T085–T086 correction.
 
 | # | Approved reference | Runtime route/state | Viewport | Result |

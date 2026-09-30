@@ -1,8 +1,10 @@
 # Feature 006 — Approved visual references
 
+> Repository policy: the binary reference images are intentionally not stored in Git. Paths and filenames below are historical trace labels only; the accepted implementation and textual verification records remain authoritative in this repository.
+
 ## 1. Visual authority
 
-Las imágenes de `solicitud/` y `admin/` son la autoridad visual aprobada para Feature 006. Quien implemente debe inspeccionar las imágenes reales: este manifiesto y sus descripciones no las sustituyen. Las referencias desktop y mobile son autoridades separadas para sus respectivas composiciones; la lámina comparativa de selección contiene ambas vistas y debe evaluarse en cada plataforma.
+Las referencias visuales externas de `solicitud/` y `admin/` fueron la autoridad visual aprobada durante Feature 006. Sus binarios no forman parte del repositorio; este manifiesto conserva únicamente su inventario, intención y trazabilidad de aceptación.
 
 ## 2. Approved visual direction
 

@@ -19,6 +19,10 @@ apps/backend/src/generated/
 .local/
 .runtime/
 
+# Feature 006 visual-review binaries stay outside Git
+docs/design/feature-006/**/*.png
+specs/006-registration-requests-approval/verification/screenshots/
+
 # Test and tool output
 *.log
 *.tmp

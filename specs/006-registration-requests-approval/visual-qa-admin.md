@@ -1,5 +1,7 @@
 # Visual QA — Administración de solicitudes
 
+> Los nombres de imágenes se conservan como identificadores históricos; los binarios de referencia y captura no se almacenan en Git.
+
 Fecha: 2026-09-28. Datos: exclusivamente sintéticos. Resultado: **7/7 referencias revisadas**.
 
 ## Comparación uno a uno

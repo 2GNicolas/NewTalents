@@ -5,6 +5,8 @@ description: "Implementation tasks for Feature 006 registration requests and app
 
 # Tasks: Solicitudes de registro y aprobación
 
+> Nota de repositorio: las rutas de imágenes mencionadas en las tareas conservan trazabilidad histórica, pero los binarios de referencia y las capturas de verificación no se almacenan en Git.
+
 **Input**: Design documents from `specs/006-registration-requests-approval/`
 
 **Prerequisites**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/`, and `docs/design/feature-006/README.md`

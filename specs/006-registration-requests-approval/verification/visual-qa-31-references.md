@@ -1,6 +1,8 @@
 # Verificación visual final — 31 referencias
 
-Fecha: 2026-09-28. Se inspeccionaron las 31 imágenes aprobadas y se capturó la aplicación en ejecución con viewport de escritorio `1440x1024` y móvil `390x844`. Las 32 capturas (la referencia de selección contiene dos plataformas) están en `verification/screenshots/`.
+> Las imágenes de referencia y las capturas runtime se usaron durante la validación, pero sus binarios fueron retirados del repositorio. Los nombres de archivo de esta matriz se conservan únicamente como identificadores históricos de la aceptación.
+
+Fecha: 2026-09-28. Se inspeccionaron las 31 referencias aprobadas y se capturó la aplicación en ejecución con viewport de escritorio `1440x1024` y móvil `390x844`. Los 32 binarios de captura y los binarios de referencia se retiraron del repositorio después de registrar esta matriz de aceptación.
 
 ## Resultado
 
