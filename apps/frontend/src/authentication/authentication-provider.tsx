@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { createAuthenticationApi, type AuthenticationApi } from './authentication-api';
 import { AuthenticationStateMachine, type AuthenticationState } from './authentication-state';
-import type { AuthenticationResult, InitialAccessInput, LoginInput, SessionMaterial } from './authentication-types';
+import type { AuthenticationResult, InitialAccessInput, LoginInput, SessionAccessProjection, SessionMaterial } from './authentication-types';
 import { RefreshCoordinator, type CoordinatedRefreshResult } from './refresh-coordinator';
 import { SessionStorage } from './session-storage';
 
@@ -11,13 +11,15 @@ type ProviderDependencies = Readonly<{ api?: AuthenticationApi; storage?: Sessio
 
 export type AuthenticationProviderValue = Readonly<{
   state: AuthenticationState;
+  sessionAccess: SessionAccessProjection | null;
   restore: () => Promise<void>;
-  login: (input: LoginInput) => Promise<void>;
+  login: (input: LoginInput, options?: Readonly<{ deferAccessProjection?: boolean }>) => Promise<SessionAccessProjection | null>;
   activateInitialAccess: (input: InitialAccessInput) => Promise<void>;
   prepareLogin: () => void;
   prepareActivation: () => void;
   continueAfterActivation: () => void;
   refresh: () => Promise<void>;
+  refreshCapabilities: () => Promise<void>;
   logout: (scope: LogoutScope) => Promise<void>;
   clearLocalSession: () => Promise<void>;
   getAccessToken: () => string | null;
@@ -35,12 +37,14 @@ export function AuthenticationProvider({ children, dependencies }: PropsWithChil
   const coordinator = useRef<RefreshCoordinator>(dependencies?.refreshCoordinator ?? new RefreshCoordinator()).current;
   const machine = useRef<AuthenticationStateMachine>(dependencies?.stateMachine ?? new AuthenticationStateMachine()).current;
   const [state, setState] = useState<AuthenticationState>(machine.state);
+  const [sessionAccess, setSessionAccess] = useState<SessionAccessProjection | null>(null);
   const mounted = useRef(true);
   const sync = useCallback(() => { if (mounted.current) setState(machine.state); }, [machine]);
 
   const clearLocalSession = useCallback(async () => {
     coordinator.invalidate();
     await storage.clear();
+    setSessionAccess(null);
     machine.completeUnauthenticated();
     sync();
   }, [coordinator, machine, storage, sync]);
@@ -53,6 +57,7 @@ export function AuthenticationProvider({ children, dependencies }: PropsWithChil
     if (result.kind === 'stale' || !mounted.current) return;
     if (result.kind === 'success') {
       await storage.save(result.value);
+      setSessionAccess(result.value.access ?? null);
       machine.completeAuthenticated();
     } else if (result.kind === 'rejected-refresh') {
       coordinator.invalidate();
@@ -78,21 +83,23 @@ export function AuthenticationProvider({ children, dependencies }: PropsWithChil
     await applyRefresh(refreshToken, true);
   }, [applyRefresh, machine, storage, sync]);
 
-  const completeSessionOperation = useCallback(async (result: AuthenticationResult<SessionMaterial>) => {
+  const completeSessionOperation = useCallback(async (result: AuthenticationResult<SessionMaterial>, deferAccessProjection = false): Promise<SessionAccessProjection | null> => {
     if (result.kind === 'success') {
       await storage.save(result.value);
+      if (!deferAccessProjection) setSessionAccess(result.value.access ?? null);
       machine.completeAuthenticated();
     } else if (result.kind === 'connectivity-failure') machine.completeUnauthenticated('connectivity-failure');
     else if (result.kind === 'unavailable-backend') machine.completeUnauthenticated('backend-unavailable');
     else machine.completeUnauthenticated(result.kind);
     sync();
+    return result.kind === 'success' ? result.value.access ?? null : null;
   }, [machine, storage, sync]);
 
-  const login = useCallback(async (input: LoginInput) => {
+  const login = useCallback(async (input: LoginInput, options?: Readonly<{ deferAccessProjection?: boolean }>) => {
     machine.recordLoginSecret(input.password);
-    if (!machine.beginLogin()) { machine.clearSecrets(); return; }
+    if (!machine.beginLogin()) { machine.clearSecrets(); return null; }
     sync();
-    await completeSessionOperation(await api.login(input));
+    return completeSessionOperation(await api.login(input), options?.deferAccessProjection === true);
   }, [api, completeSessionOperation, machine, sync]);
 
   const activateInitialAccess = useCallback(async (input: InitialAccessInput) => {
@@ -130,6 +137,8 @@ export function AuthenticationProvider({ children, dependencies }: PropsWithChil
     await applyRefresh(refreshToken, false);
   }, [applyRefresh, machine, storage, sync]);
 
+  const refreshCapabilities = refresh;
+
   const logout = useCallback(async (scope: LogoutScope) => {
     if (!machine.beginLogout(scope)) return;
     sync();
@@ -163,7 +172,7 @@ export function AuthenticationProvider({ children, dependencies }: PropsWithChil
     };
   }, [coordinator, machine, restore]);
 
-  const value = useMemo<AuthenticationProviderValue>(() => Object.freeze({ state, restore, login, activateInitialAccess, prepareLogin, prepareActivation, continueAfterActivation, refresh, logout, clearLocalSession, getAccessToken }), [activateInitialAccess, clearLocalSession, continueAfterActivation, getAccessToken, login, logout, prepareActivation, prepareLogin, refresh, restore, state]);
+  const value = useMemo<AuthenticationProviderValue>(() => Object.freeze({ state, sessionAccess, restore, login, activateInitialAccess, prepareLogin, prepareActivation, continueAfterActivation, refresh, refreshCapabilities, logout, clearLocalSession, getAccessToken }), [activateInitialAccess, clearLocalSession, continueAfterActivation, getAccessToken, login, logout, prepareActivation, prepareLogin, refresh, refreshCapabilities, restore, sessionAccess, state]);
   return <AuthenticationContext.Provider value={value}>{children}</AuthenticationContext.Provider>;
 }
 

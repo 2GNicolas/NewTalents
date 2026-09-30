@@ -2,6 +2,7 @@ import { render } from '@testing-library/react-native';
 
 jest.mock('expo-router', () => ({
   Slot: () => null,
+  useGlobalSearchParams: jest.fn(() => ({})),
   usePathname: jest.fn(),
   useRouter: jest.fn(),
 }));

@@ -16,7 +16,7 @@ export class SessionService implements FirstSessionIssuer {
   }
   async validate(identityId: unknown, sessionId: unknown): Promise<boolean> {
     if (!uuid(identityId) || !uuid(sessionId)) return false;
-    const session = await this.prisma.authenticationSession.findFirst({ where: { id: sessionId, identityId, status: 'ACTIVE', expiresAt: { gt: new Date() }, identity: { status: 'ACTIVE', roleAssignments: { some: { status: 'ACTIVE' } } } }, select: { id: true } }); return Boolean(session);
+    const session = await this.prisma.authenticationSession.findFirst({ where: { id: sessionId, identityId, status: 'ACTIVE', expiresAt: { gt: new Date() }, identity: { status: 'ACTIVE', OR: [{ roleAssignments: { some: { status: 'ACTIVE' } } }, { registrationApplicantAccesses: { some: { status: 'PENDING_ONBOARDING' } } }] } }, select: { id: true } }); return Boolean(session);
   }
   async logoutCurrent(identityId: unknown, sessionId: unknown): Promise<boolean> { return this.revoke(identityId, sessionId, false); }
   async logoutAll(identityId: unknown): Promise<boolean> { return this.revoke(identityId, undefined, true); }

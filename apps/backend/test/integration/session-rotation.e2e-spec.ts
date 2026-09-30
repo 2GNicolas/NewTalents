@@ -44,6 +44,7 @@ describe('Feature 003 session rotation', () => {
       expect(rotation.accessToken.length).toBeGreaterThan(80);
       expect(rotation.expiresIn).toBe(900);
       expect(typeof rotation.refreshToken).toBe('string');
+      expect(rotation.access).toEqual({ classification: 'product', capabilities: [] });
     }
     await expect(refreshes.rotate(raw)).resolves.toEqual({ outcome: 'denied' });
     expect(await sessions.validate(identityId, first)).toBe(false);

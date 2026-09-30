@@ -90,3 +90,133 @@ El primer intento de suite + export simultáneos colisionó al limpiar el mismo 
 Entorno: PostgreSQL healthy, cuatro migraciones actuales; NestJS 3000 y Expo Web 8081 en ejecución. URLs comprobadas HTTP 200: `http://localhost:3000/health/live`, `http://localhost:3000/health/ready`, `http://localhost:8081`. La ruta QA requiere relación con su Tutor; una sesión de otro actor no obtiene acceso por conocer su URL.
 
 final result: passed
+
+---
+
+# Visual QA — Feature 006, hallazgos de revisión manual
+
+Fecha: 2026-09-29. Alcance exclusivo: fondo de entrada/formularios, selectores compartidos, alineación de campos, conflicto exacto de documento y salida del estado de solicitud. No se ejecutó Converge ni se revalidaron flujos no relacionados.
+
+## Evidencia y resultado
+
+- Fondo: en Chrome 1920×945 la capa fija y la imagen miden exactamente 1920×945; en 390×844 miden 390×844. Tras desplazamiento conservan `top=0`, cubren el viewport completo y mantienen el gradiente oscuro inferior, sin franja lateral, mosaico ni costura.
+- Municipio: el selector compartido se renderiza como capa fija hija de `body`, con fondo `rgb(3,24,17)`, opacidad `1`, `z-index: 10000` y scroll vertical. En el solapamiento escritorio con “Guardar y continuar”, `elementFromPoint` devuelve la opción municipal y no el botón. El selector de tipo de documento usa la misma capa.
+- Alineación: todas las ranuras de etiqueta miden 40 px. En la fila del responsable, “Fecha de nacimiento”, “País de la persona responsable”, “Municipio de la persona responsable” y “Teléfono obligatorio” terminan en la misma coordenada vertical aun cuando Municipio ocupa dos líneas.
+- Conflicto: con un identificador sintético ya existente, el clic real en “Guardar y continuar” mantuvo el foco en “Número de documento” y mostró “Ya existe un registro con este documento”. No apareció error en correo ni “Error al enviar”.
+- Estado: en 390×844 y 1920×945 existe exactamente un botón “Cerrar sesión” y cero acciones “Volver al inicio”. En escritorio el botón ocupa y=896..927 dentro de un viewport de 945 px, por lo que permanece visible.
+- Referencias comparadas: `natural-person-academy-information-{desktop|mobile}.png` y `applicant-correction-status-{desktop|mobile}.png`. Se preservaron la composición, jerarquía, superficies esmeralda/glass y acciones aprobadas; los cambios son correctivos, no un rediseño.
+- Consola: cero errores de aplicación. Persisten únicamente avisos de desarrollo preexistentes de React Native Web sobre `shadow*` y `pointerEvents`.
+
+## Verificación automatizada
+
+- Frontend focalizado: 4 suites, 64 pruebas, passed.
+- Frontend typecheck: passed.
+- Backend conflicto exacto: 1 suite, 3 pruebas, passed.
+- PostgreSQL concurrencia: 1 suite, 4 pruebas, passed; conserva el aviso deprecado preexistente de `pg` sobre consultas simultáneas en un mismo cliente.
+
+final result: passed
+
+# Responsive correction — Feature 006, T077–T084
+
+Date: 2026-09-25. Route: `/registration`. Browser: Chrome, DPR 1.
+
+## Root cause and correction
+
+The document root was a transparent, fixed-height Expo surface while the React Native `ScrollView` owned the longer content. The journey background used `minHeight: '100%'` beneath ancestors without a reliable dynamic viewport floor, clipped overflow, and let `ImageBackground` size its image layer to the source image's intrinsic 941 px height. On short mobile viewports, a sticky action then covered the options and made the remaining scroll content appear unreachable; viewport transitions could expose the browser's white fallback.
+
+The correction gives `html`, `body`, and `#root` the canvas fallback, applies a `100dvh` floor on web, binds the image layer to the shell's full width and height, retains the bounded `ScrollView` as the single scroll owner, removes sticky overlay positioning from the mobile action, adds safe-area bottom padding, and clips horizontal overflow only. Desktop rail/content behavior is unchanged.
+
+## Source and evidence
+
+- Source visual truth: `docs/design/feature-006/solicitud/request-type-selection-desktop-mobile.png` (1487×1058 source board).
+- Final runtime captures: `.tmp/feature006-design-qa/final-selection-{360x640|390x844|424x642|1440x1024}.png`, DPR 1.
+- Final scrolled mobile evidence: `.tmp/feature006-design-qa/final-selection-{360x640|390x844|424x642}-bottom.png`.
+- Joint normalized comparisons: `.tmp/feature006-design-qa/compare-final-selection-mobile.jpg` and `.tmp/feature006-design-qa/compare-final-selection-desktop.jpg`.
+- Full-view comparison checked composition, rail/content proportions, mobile hierarchy, cards, action treatment, emerald background, typography, glass, borders, progress, spacing, and overflow. Focused bottom-state captures were required because short viewports intentionally scroll; they verify the last option, announcement, CTA, and final notice together.
+
+## Runtime matrix
+
+| Viewport | Document | Scroll owner | Final scroll | Horizontal overflow | Reachability/background | Result |
+|---:|---:|---:|---:|---:|---|---|
+| 360×640 | 360×640 | 640 / 1067 px | 427 / 427 px | 0 px | Last option, CTA, and complete final notice visible; image 360×640; body/root `rgb(3,8,6)` | PASS |
+| 390×844 | 390×844 | 844 / 1021 px | 177 / 177 px | 0 px | Last option, CTA, and complete final notice visible; image 390×844; body/root `rgb(3,8,6)` | PASS |
+| 424×642 | 424×642 | 642 / 1011 px | 369 / 369 px | 0 px | Last option, CTA, and complete final notice visible; image 424×642; body/root `rgb(3,8,6)` | PASS |
+| 1440×1024 | 1440×1024 | 1024 / 1058 px | 34 / 34 px | 0 px | Desktop rail/content preserved; image and fallback cover 1440×1024 | PASS |
+
+## Comparison history
+
+| Iteration | Finding | Fix and post-fix evidence |
+|---|---|---|
+| Reproduction | P0: 424×642 used a transparent fixed document, clipped emerald shell, nested 983 px content, and sticky CTA covering options | Added root fallback/dynamic viewport contract and normal-flow action; mobile bottom captures prove reachability |
+| First correction | P1: `ImageBackground` still used the asset's intrinsic 941 px height, exposing fallback beneath the desktop shell | Added explicit 100% image dimensions; all four final captures measure the image exactly equal to the viewport |
+| Final | No actionable P0/P1/P2 responsive findings | Four-size matrix passes with zero horizontal overflow and full mobile reachability |
+
+## Console and preview safety
+
+Chrome reported zero exceptions, routing errors, hydration errors, key warnings, failed assets, or application console errors. React DevTools/startup messages are development diagnostics. Remaining `shadow*` and `pointerEvents` messages are React Native Web deprecation warnings emitted while Expo Router eagerly imports pre-existing route modules; the Feature 006 journey/glass instances were migrated and no warning was suppressed.
+
+`?preview=` remains guarded by `NODE_ENV !== 'production'`; its focused production test proves the ordinary first step is selected in production. It does not authenticate, authorize, upload, save, or submit. The production export contains no synthetic identity, contact, document, password, evidence filename/path, NIT, academy fixture, or test UUID canary.
+
+## Required fidelity surfaces
+
+- Typography and copy: existing approved hierarchy and wording preserved; short viewports scroll rather than truncate.
+- Spacing/layout: mobile remains single-column, desktop proportions remain unchanged, and the action follows content without overlap.
+- Colors/tokens: emerald image and `canvasDeep` fallback cover every viewport; lime progress, focus, border, and CTA treatment remain intact.
+- Image quality/assets: the approved local emerald asset is reused at full shell size; no substitute asset or generated decoration was introduced.
+- Glass and controls: existing blur, illuminated borders, card/field sizing, and touch dimensions are preserved.
+
+final result: passed
+
+---
+
+# Visual QA — Feature 006, T077–T084
+
+Date: 2026-09-25. Branch: `feature/006-registration-requests-approval`.
+
+The 14 approved applicant references were opened and compared with 15 deterministic Expo Web captures. Runtime captures use 1440×1024 for desktop, 390×1850 for long mobile journeys, and 390×844 for request selection. The approved source files are 1487×1058 desktop boards and 853×1844 mobile boards; the selection source contains both desktop and mobile compositions.
+
+Material corrections completed: category-first request selection; desktop rail/content proportions; true 390 px layout without horizontal overflow; single-column mobile hierarchy; viewport-bottom mobile actions; compact progress labels; glass opacity/borders; lime progress, focus, selection, and primary actions; safe empty-state summaries; and development-only deterministic preview routing. Remaining optical differences are P3: local system font metrics, simplified line icons, and intentionally absent synthetic personal values or evidence in production code.
+
+| Approved reference | Runtime route | Viewport | Material differences corrected | Final |
+|---|---|---:|---|---|
+| `docs/design/feature-006/solicitud/request-type-selection-desktop-mobile.png` | `/registration` | 1440×1024 + 390×844 | Category-first Personal/Academia switch, two active-category cards, rail/progress hierarchy, sticky mobile action, full-width lime CTA | PASS |
+| `docs/design/feature-006/solicitud/adult-account-identity-desktop.png` | `/registration/personal-adult?preview=identity` | 1440×1024 | Rail/content ratio, field grid, glass panel, progress and actions | PASS |
+| `docs/design/feature-006/solicitud/adult-account-identity-mobile.png` | same | 390×1850 | Single-column fields, wrapped heading, exact-width cards, bottom action area, no horizontal overflow | PASS |
+| `docs/design/feature-006/solicitud/adult-submission-review-desktop.png` | `/registration/personal-adult?preview=review` | 1440×1024 | Two-column review, evidence/summary grouping, consent and action hierarchy | PASS |
+| `docs/design/feature-006/solicitud/adult-submission-review-mobile.png` | same | 390×1850 | Stacked review cards, readable evidence rows, safe summary state, sticky actions | PASS |
+| `docs/design/feature-006/solicitud/represented-minor-information-desktop.png` | `/registration/represented-minor?preview=minor` | 1440×1024 | Separate representative/minor regions, mandatory phone context, balanced columns | PASS |
+| `docs/design/feature-006/solicitud/represented-minor-information-mobile.png` | same | 390×1850 | Single-column ordering, field/card widths, no minor-account notice, sticky actions | PASS |
+| `docs/design/feature-006/solicitud/represented-minor-submission-review-desktop.png` | `/registration/represented-minor?preview=review` | 1440×1024 | Evidence and identity columns, separate legal-authority/consent controls | PASS |
+| `docs/design/feature-006/solicitud/represented-minor-submission-review-mobile.png` | same | 390×1850 | Stacked evidence/representative/minor hierarchy and viewport action area | PASS |
+| `docs/design/feature-006/solicitud/formal-academy-information-desktop.png` | `/registration/academy-formal?preview=academy` | 1440×1024 | Formal type banner, NIT/organization fields, compact desktop grid | PASS |
+| `docs/design/feature-006/solicitud/formal-academy-information-mobile.png` | same | 390×1850 | Single-column formal fields, exact card width, pending-academy notice | PASS |
+| `docs/design/feature-006/solicitud/natural-person-academy-information-desktop.png` | `/registration/academy-natural-person?preview=academy` | 1440×1024 | Natural-person type banner, operational fields, neutral non-certification notice | PASS |
+| `docs/design/feature-006/solicitud/natural-person-academy-information-mobile.png` | same | 390×1850 | Single-column operating-person hierarchy, wrapped declaration, no overflow | PASS |
+| `docs/design/feature-006/solicitud/natural-person-academy-submission-review-desktop.png` | `/registration/academy-natural-person?preview=review` | 1440×1024 | Academy/responsible/evidence/declaration grouping and neutral certification wording | PASS |
+
+Capture directory: `C:/Proyectos/NewTalents/.tmp/feature006-design-qa`. Every final capture reports `innerWidth` equal to its requested viewport and `documentElement.scrollWidth` equal to `innerWidth`.
+
+Preview safety: `?preview=` only selects a deterministic visual step outside production. Production resolves every preview request to the ordinary first step; no authentication, ownership, API mutation, or submission boundary is bypassed. Runtime defaults contain no synthetic identity, document number, phone, academy name, NIT, filename, evidence, password, or token.
+
+final result: passed
+
+---
+
+# Visual QA — Feature 006, T085–T087
+
+Date: 2026-09-25. The approved correction/status desktop and mobile references were compared alongside final Expo Web runtime output. The earlier fourteen Phase 7 references retained their existing evidence because no shared-shell change materially altered their layouts; the opt-in compact brand variant is used only by the status composition.
+
+The status screen preserves the approved full-width emerald/liquid-glass hierarchy, desktop request rail, safe correction reason, three-step timeline, category-only evidence target, primary correction action, secondary summary action, and continuous mobile background. Responsive corrections made during QA removed horizontal clipping, moved the concise privacy notice to the approved mobile position, kept the fuller desktop notice, and preserved normal scroll on short devices.
+
+| Runtime evidence | Width/height | Scroll/overflow result | Fidelity result |
+|---|---:|---|---|
+| `.tmp/feature006-design-qa/status-desktop-1440x1024.png` | 1440×1024 | 0 px horizontal overflow; full composition visible | PASS |
+| `.tmp/feature006-design-qa/status-mobile-390x844.png` | 390×844 | 844 / 1086 px internal scroll; 0 px horizontal overflow | PASS |
+| `.tmp/feature006-design-qa/status-short-424x642.png` plus `-bottom.png` | 424×642 | 642 / 1009 px; terminal actions/footer reachable; 0 px horizontal overflow | PASS |
+| `.tmp/feature006-design-qa/status-comparison.png` | joint board | source and runtime inspected together | PASS |
+
+Accessibility: semantic labeled buttons, assertive/polite live regions, visible keyboard-focus borders in normal mode, 46–50 px minimum mobile controls, warning communicated with icon/text/border as well as color, and no motion/transition in the status flow. The development preview is deliberately disabled and mutation-free; the authenticated normal route alone owns restore, upload, resubmit and capability refresh.
+
+No P0/P1/P2 findings remain. P3 differences are limited to local system-font metrics, simplified line-glyph rendering, and background crop variation from the shared approved asset.
+
+final result: passed

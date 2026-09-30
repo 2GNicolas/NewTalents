@@ -54,6 +54,6 @@ import { LocalReviewProvisioningService } from './review-environment/local-revie
     PlayerPassportService,
     LocalReviewProvisioningService,
   ],
-  exports: [PassportAuthorizationAdapter, PassportAgePolicyService, RepresentativeConfirmationService, PassportResponsibilityService, HistoricalTutorReconciliationService, PlayerPassportService, LocalReviewProvisioningService],
+  exports: [PASSPORT_KEY_MATERIAL, PrivateIdentityService, PassportTransactionRunner, PassportAuthorizationAdapter, PassportAgePolicyService, RepresentativeConfirmationService, PassportResponsibilityService, HistoricalTutorReconciliationService, PlayerPassportService, LocalReviewProvisioningService],
 })
 export class PlayerPassportModule {}

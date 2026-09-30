@@ -73,4 +73,106 @@ describe('AuthorizationService', () => {
     expect(service.evaluate({ ...request(), permission: 'unknown' }).allowed).toBe(false);
     expect(service.evaluate({} as AuthorizationRequest)).toEqual({ allowed: false, reason: 'invalid-context', policyVersion: '1' });
   });
+
+  it('projects pending applicants only onto their own current request facts', () => {
+    const pending = {
+      kind: 'authenticated' as const,
+      identityId: id,
+      status: 'PENDING_ONBOARDING' as const,
+      roles: [],
+      pendingAccess: { active: true, requestId: 'request-1' },
+    };
+    const own = {
+      classification: 'protected' as const,
+      resourceId: 'request-1',
+      requestOwner: true,
+      requestStatus: 'DRAFT' as const,
+      requestVersionCurrent: true,
+    };
+
+    expect(service.evaluate(request({ permission: 'registration.request.own.view', resource: own, subject: pending })).allowed).toBe(true);
+    expect(service.evaluate(request({ permission: 'registration.request.own.edit-draft', resource: own, subject: pending })).allowed).toBe(true);
+    expect(service.evaluate(request({ permission: 'registration.request.own.view', resource: { ...own, resourceId: 'request-2' }, subject: pending }))).toEqual({ allowed: false, reason: 'insufficient-resource-facts', policyVersion: '1' });
+    expect(service.evaluate(request({ permission: 'passport.particular.create', subject: pending }))).toEqual({ allowed: false, reason: 'pending-access-restriction', policyVersion: '1' });
+    expect(service.evaluate(request({ permission: 'registration.review.view', resource: own, subject: pending })).allowed).toBe(false);
+  });
+
+  it('requires academy resource facts and responsible authority instead of a role label alone', () => {
+    const academySubject = {
+      kind: 'authenticated' as const,
+      identityId: id,
+      status: 'ACTIVE' as const,
+      roles: [{ role: 'ACADEMY_USER' as const, active: true }],
+      academyMembership: { active: true, academyId: 'academy-1' },
+    };
+    const academyFacts = {
+      classification: 'protected' as const,
+      academyId: 'academy-1',
+      academyContextMatches: true,
+      academyApproved: true,
+      academyMembershipActive: true,
+    };
+
+    expect(service.evaluate(request({ permission: 'registration.request.academy.create-adult-player', resource: academyFacts, subject: academySubject })).allowed).toBe(true);
+    expect(service.evaluate(request({ permission: 'registration.request.academy.create-additional-account', resource: academyFacts, subject: academySubject })).allowed).toBe(false);
+    expect(service.evaluate(request({ permission: 'registration.request.academy.create-additional-account', resource: { ...academyFacts, academyResponsibleAuthority: true }, subject: academySubject })).allowed).toBe(true);
+    expect(service.evaluate(request({ permission: 'registration.request.academy.view', resource: { ...academyFacts, academyContextMatches: false }, subject: academySubject })).allowed).toBe(false);
+    const academyOwnedDraft = { ...academyFacts, resourceId: 'request-1', requestOwner: true, requestStatus: 'DRAFT' as const, requestVersionCurrent: true };
+    expect(service.evaluate(request({ permission: 'registration.request.own.view', resource: academyOwnedDraft, subject: academySubject })).allowed).toBe(true);
+    expect(service.evaluate(request({ permission: 'registration.request.own.upload-evidence', resource: academyOwnedDraft, subject: academySubject })).allowed).toBe(true);
+    expect(service.evaluate(request({ permission: 'registration.request.own.view', resource: { ...academyOwnedDraft, academyContextMatches: false }, subject: academySubject })).allowed).toBe(false);
+  });
+
+  it('requires an explicit Administrator capability and denies Analysts private registration operations', () => {
+    const admin = { kind: 'authenticated' as const, identityId: id, status: 'ACTIVE' as const, roles: [{ role: 'ADMINISTRATOR' as const, active: true }] };
+    const analyst = { kind: 'authenticated' as const, identityId: id, status: 'ACTIVE' as const, roles: [{ role: 'ANALYST' as const, active: true }] };
+    const submitted = { classification: 'protected' as const, requestStatus: 'SUBMITTED' as const, requestVersionCurrent: true };
+
+    expect(service.evaluate(request({ permission: 'registration.review.view', resource: submitted, subject: admin })).allowed).toBe(false);
+    expect(service.evaluate(request({ permission: 'registration.review.view', resource: { ...submitted, administratorCapability: true }, subject: admin })).allowed).toBe(true);
+    expect(service.evaluate(request({ permission: 'registration.review.view-evidence', resource: { ...submitted, administratorCapability: true, evidenceCompleteAndClean: true }, subject: analyst })).allowed).toBe(false);
+    expect(service.evaluate(request({ permission: 'registration.review.approve', resource: { ...submitted, administratorCapability: true, manualDossierConfirmed: true, deletionState: 'COMPLETED', duplicateConflictAbsent: true, ageRouteCompatible: true, representationComplete: true }, subject: admin })).allowed).toBe(true);
+  });
+
+  it('covers every approved Feature 006 capability with its required facts', () => {
+    const publicPermissions = [
+      'registration.request.create.personal-adult',
+      'registration.request.create.represented-minor',
+      'registration.request.create.formal-academy',
+      'registration.request.create.natural-person-academy',
+    ] as const;
+    for (const permission of publicPermissions) expect(service.evaluate({ version: '1', permission, resource: { classification: 'public', supportedRegistrationType: true }, subject: { kind: 'anonymous' } }).allowed).toBe(true);
+
+    const pending = { kind: 'authenticated' as const, identityId: id, status: 'PENDING_ONBOARDING' as const, roles: [], pendingAccess: { active: true, requestId: 'request-1' } };
+    const ownBase = { classification: 'protected' as const, resourceId: 'request-1', requestOwner: true, requestVersionCurrent: true };
+    const ownCases = [
+      ['registration.request.own.view', { ...ownBase, requestStatus: 'SUBMITTED' as const }],
+      ['registration.request.own.edit-draft', { ...ownBase, requestStatus: 'DRAFT' as const }],
+      ['registration.request.own.submit', { ...ownBase, requestStatus: 'DRAFT' as const, evidenceCompleteAndClean: true, ageRouteCompatible: true, representationComplete: true }],
+      ['registration.request.own.correct', { ...ownBase, requestStatus: 'REQUIRES_CORRECTION' as const }],
+      ['registration.request.own.resubmit', { ...ownBase, requestStatus: 'REQUIRES_CORRECTION' as const, evidenceCompleteAndClean: true, ageRouteCompatible: true, representationComplete: true }],
+      ['registration.request.own.upload-evidence', { ...ownBase, requestStatus: 'DRAFT' as const }],
+      ['registration.request.own.view-deletion-status', { ...ownBase, requestStatus: 'SUBMITTED' as const }],
+    ] as const;
+    for (const [permission, resource] of ownCases) expect(service.evaluate(request({ permission, resource, subject: pending })).allowed).toBe(true);
+
+    const academySubject = { kind: 'authenticated' as const, identityId: id, status: 'ACTIVE' as const, roles: [{ role: 'ACADEMY_USER' as const, active: true }], academyMembership: { active: true, academyId: 'academy-1' } };
+    const academyFacts = { classification: 'protected' as const, academyId: 'academy-1', academyContextMatches: true, academyApproved: true, academyMembershipActive: true, academyResponsibleAuthority: true };
+    for (const permission of ['registration.request.academy.list', 'registration.request.academy.view', 'registration.request.academy.create-additional-account', 'registration.request.academy.create-adult-player', 'registration.request.academy.create-minor-player'] as const) expect(service.evaluate(request({ permission, resource: academyFacts, subject: academySubject })).allowed).toBe(true);
+
+    const admin = { kind: 'authenticated' as const, identityId: id, status: 'ACTIVE' as const, roles: [{ role: 'ADMINISTRATOR' as const, active: true }] };
+    const adminBase = { classification: 'protected' as const, administratorCapability: true };
+    const adminCases = [
+      ['registration.review.list', adminBase],
+      ['registration.review.view', adminBase],
+      ['registration.review.view-evidence', { ...adminBase, requestStatus: 'SUBMITTED' as const, requestVersionCurrent: true, evidenceCompleteAndClean: true }],
+      ['registration.review.request-correction', { ...adminBase, requestStatus: 'SUBMITTED' as const, requestVersionCurrent: true }],
+      ['registration.review.confirm-dossier', { ...adminBase, requestStatus: 'SUBMITTED' as const, requestVersionCurrent: true, evidenceCompleteAndClean: true, duplicateConflictAbsent: true }],
+      ['registration.review.approve', { ...adminBase, requestStatus: 'SUBMITTED' as const, requestVersionCurrent: true, manualDossierConfirmed: true, deletionState: 'COMPLETED' as const, duplicateConflictAbsent: true, ageRouteCompatible: true, representationComplete: true }],
+      ['registration.review.reject', { ...adminBase, requestStatus: 'SUBMITTED' as const, requestVersionCurrent: true }],
+      ['registration.review.view-deletion-status', adminBase],
+      ['registration.review.retry-deletion', { ...adminBase, deletionState: 'RECOVERY_REQUIRED' as const }],
+    ] as const;
+    for (const [permission, resource] of adminCases) expect(service.evaluate(request({ permission, resource, subject: admin })).allowed).toBe(true);
+  });
 });
