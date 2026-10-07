@@ -9,10 +9,12 @@ beforeAll(async () => {
 });
 
 describe('ApprovalExecutionService contract', () => {
-  const command = { expectedVersion: 5, idempotencyKey: '55555555-5555-4555-8555-555555555555', manualDossierConfirmation: { confirmed: true, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } };
+  const command = { expectedVersion: 5, idempotencyKey: '55555555-5555-4555-8555-555555555555', manualDossierConfirmation: { confirmed: true, dossierName: 'exp-prueba-001', declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } };
 
   it.each([
     [{ ...command, manualDossierConfirmation: { ...command.manualDossierConfirmation, confirmed: false } }, 'DOSSIER_CONFIRMATION_REQUIRED'],
+    [{ ...command, manualDossierConfirmation: { ...command.manualDossierConfirmation, dossierName: '   ' } }, 'DOSSIER_NAME_INVALID'],
+    [{ ...command, manualDossierConfirmation: { ...command.manualDossierConfirmation, dossierName: 'x'.repeat(181) } }, 'DOSSIER_NAME_INVALID'],
     [{ ...command, manualDossierConfirmation: { ...command.manualDossierConfirmation, declarationVersion: 'x'.repeat(41) } }, 'DOSSIER_DECLARATION_INVALID'],
     [{ ...command, manualDossierConfirmation: { ...command.manualDossierConfirmation, categories: [] } }, 'DOSSIER_CATEGORIES_REQUIRED'],
     [{ ...command, manualDossierConfirmation: { ...command.manualDossierConfirmation, categories: ['IDENTITY_FRONT', 'IDENTITY_FRONT'] } }, 'DOSSIER_CATEGORIES_INVALID'],
@@ -32,6 +34,30 @@ describe('ApprovalExecutionService contract', () => {
     const service = new Service(prisma, authorization, { readiness: vi.fn().mockResolvedValue({ ageRouteCompatible: true, representationComplete: true }) });
     await expect(service.prepare('admin', 'request', command)).resolves.toEqual({ outcome: 'not-found' });
     expect(authorization.authorize).toHaveBeenCalledWith(expect.objectContaining({ permission: 'registration.review.confirm-dossier', expectedVersion: 5, evidenceCompleteAndClean: expect.any(Boolean), duplicateConflictAbsent: expect.any(Boolean) }));
+  });
+
+  it('writes the entered dossier name in the same preparation transaction', async () => {
+    const confirmationCreate = vi.fn().mockResolvedValue({ id: 'dossier' });
+    const current = { status: 'SUBMITTED', version: 5, approvalExecutionStatus: 'NONE', evidenceItems: [{ id: 'evidence', status: 'CLEAN' }], duplicateSignals: [] };
+    const tx = {
+      $queryRawUnsafe: vi.fn(),
+      registrationRequest: { findUnique: vi.fn().mockResolvedValue(current), update: vi.fn() },
+      registrationManualDossierConfirmation: { create: confirmationCreate },
+      registrationApprovalExecution: { create: vi.fn().mockResolvedValue({ id: 'execution' }) },
+      registrationEvidenceItem: { update: vi.fn() },
+      registrationEvidenceDeletionRecord: { upsert: vi.fn() },
+      registrationRequestEvent: { aggregate: vi.fn().mockResolvedValue({ _max: { sequence: 0 } }), create: vi.fn() },
+    };
+    const prisma = {
+      registrationApprovalExecution: { findUnique: vi.fn().mockResolvedValue(null) },
+      registrationRequest: { findUnique: vi.fn().mockResolvedValue(current) },
+      $transaction: vi.fn((callback: (transaction: typeof tx) => unknown) => callback(tx)),
+    };
+    const service = new Service(prisma, { authorize: vi.fn().mockResolvedValue({ allowed: true }) }, { readiness: vi.fn().mockResolvedValue({ ageRouteCompatible: true, representationComplete: true }) });
+    service.finalize = vi.fn().mockResolvedValue({ outcome: 'pending-deletion' });
+    await service.approve('admin', 'request', { ...command, manualDossierConfirmation: { ...command.manualDossierConfirmation, dossierName: ' exp-prueba-001 ' } });
+    expect(confirmationCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ dossierName: 'exp-prueba-001', requestId: 'request' }) });
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
   });
 
   it('creates no typed outcome until every evidence deletion is verified, then dispatches exactly once', async () => {

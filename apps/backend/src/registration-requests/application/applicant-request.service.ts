@@ -120,6 +120,10 @@ export class ApplicantRequestService {
       const { uploadedAt: _uploadedAt, ...evidence } = current;
       return Object.freeze({ outcome: 'created' as const, evidence: Object.freeze(evidence) });
     }
+    const uncertain = correctionReplacement ? null : await this.prisma.registrationEvidenceItem.findFirst({
+      where: { requestId, category: input.category, status: { in: ['QUARANTINED', 'SCANNING', 'REJECTED'] }, replacedById: null, deletedAt: null },
+      select: { id: true },
+    });
     const total = await this.prisma.registrationEvidenceItem.aggregate({
       where: { requestId, replacedById: null, deletedAt: null, ...(correctionReplacement ? { category: { not: input.category } } : {}) },
       _sum: { sizeBytes: true },
@@ -128,6 +132,14 @@ export class ApplicantRequestService {
     if (!ingested.internal) return { outcome: ingested.outcome, evidence: ingested.projection };
     if (correctionReplacement && ingested.outcome === 'clean') {
       const replaced = await this.deletion.replaceCorrectedEvidence({
+        actorIdentityId: identityId, requestId, expectedVersion: input.expectedVersion, category: input.category,
+        replacement: { ...ingested.internal, declaredMime: ingested.projection.declaredMime, detectedMime: ingested.projection.detectedMime!, sizeBytes: ingested.projection.sizeBytes, scannerResultCode: 'CLEAN' },
+      });
+      if (replaced.outcome !== 'replaced') return { outcome: replaced.outcome };
+      return Object.freeze({ outcome: 'created' as const, evidence: Object.freeze({ id: replaced.evidenceId, category: input.category, status: 'CLEAN' as const, sizeBytes: ingested.projection.sizeBytes }) });
+    }
+    if (uncertain && ingested.outcome === 'clean') {
+      const replaced = await this.deletion.replaceUncertainEvidence({
         actorIdentityId: identityId, requestId, expectedVersion: input.expectedVersion, category: input.category,
         replacement: { ...ingested.internal, declaredMime: ingested.projection.declaredMime, detectedMime: ingested.projection.detectedMime!, sizeBytes: ingested.projection.sizeBytes, scannerResultCode: 'CLEAN' },
       });

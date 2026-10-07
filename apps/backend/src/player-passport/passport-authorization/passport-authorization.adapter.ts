@@ -31,6 +31,7 @@ type ResourceFacts = {
   classification: 'protected';
   academyId?: string;
   resourceId?: string;
+  analystCustodyActive?: boolean;
 };
 
 type ActiveMembership = Readonly<{ academyId: string; status: 'ACTIVE' | 'ENDED' }>;
@@ -77,6 +78,7 @@ export class PassportAuthorizationAdapter {
       select: {
         status: true,
         roleAssignments: { where: { status: 'ACTIVE' }, select: { role: true } },
+        analystOperationalProfile: { select: { identityId: true } },
       },
     });
     if (!identity) return this.deny('inactive-identity');
@@ -95,7 +97,19 @@ export class PassportAuthorizationAdapter {
     let tutorRelationship: Readonly<{ active: true; resourceId: string }> | undefined;
     let passport: Readonly<{ playerId: string; originAcademyId: string | null; createdByIdentityId: string; responsibilities: ReadonlyArray<{ kind: string; academyId: string | null }> }> | null = null;
 
-    if (request.passportId && (rule.tutor || rule.academy || ('particular' in rule && rule.particular))) {
+    const resourcePolicy = 'resourcePolicy' in rule ? rule.resourcePolicy : undefined;
+    if (request.passportId && (resourcePolicy === 'analyst-current-custody' || resourcePolicy === 'administrator-or-analyst-custody')) {
+      if (!UUID_PATTERN.test(request.passportId)) return this.deny('insufficient-resource-facts');
+      const passport = await this.prisma.playerPassport.findUnique({ where: { id: request.passportId }, select: { id: true } });
+      if (!passport) return this.deny('insufficient-resource-facts');
+      const custody = await this.prisma.passportCustody.findUnique({
+        where: { passportId: request.passportId },
+        select: { currentAnalystIdentityId: true },
+      });
+      resource.analystCustodyActive = identity.analystOperationalProfile?.identityId === request.identityId
+        && custody?.currentAnalystIdentityId === request.identityId;
+      resource.resourceId = request.passportId;
+    } else if (request.passportId && (rule.tutor || rule.academy || ('particular' in rule && rule.particular))) {
       if (!UUID_PATTERN.test(request.passportId)) return this.deny('insufficient-resource-facts');
       const found = await this.prisma.playerPassport.findUnique({
         where: { id: request.passportId },

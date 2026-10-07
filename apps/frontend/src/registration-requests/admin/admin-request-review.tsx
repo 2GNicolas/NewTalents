@@ -1,47 +1,420 @@
-import React, { useState } from 'react';
-import { ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { useState } from "react";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
-import { LiquidGlassPanel } from '../../design/components/liquid-glass-panel';
-import { authTokens } from '../../design/tokens';
-import { Brand } from '../components/registration-journey';
-import type { AdminRegistrationReview } from '../registration-request-api';
+import { LiquidGlassPanel } from "../../design/components/liquid-glass-panel";
+import { authTokens } from "../../design/tokens";
+import type { AdminRegistrationReview } from "../registration-request-api";
 
-type Props = Readonly<{ review: AdminRegistrationReview; onBack: () => void; onOpenEvidence: (evidenceId: string) => void; onCorrection?: () => void; onReject?: () => void; onContinue: () => void; onLogout?: () => void; evidenceUrl?: string; evidenceLoading?: boolean; previewMode?: 'desktop' | 'mobile' }>;
+type Props = Readonly<{
+  review: AdminRegistrationReview;
+  onBack: () => void;
+  onOpenEvidence: (evidenceId: string) => void;
+  onCorrection?: () => void;
+  onReject?: () => void;
+  onContinue: () => void;
+  evidenceUrl?: string;
+  evidenceLoading?: boolean;
+  previewMode?: "desktop" | "mobile";
+}>;
 
-export function AdminRequestReview({ review, onBack, onOpenEvidence, onCorrection = () => undefined, onReject = () => undefined, onContinue, onLogout = () => undefined, evidenceUrl, evidenceLoading = false, previewMode }: Props) {
-  const desktop = previewMode ? previewMode === 'desktop' : useWindowDimensions().width >= authTokens.breakpoints.desktop;
-  const [selectedEvidenceId, setSelectedEvidenceId] = useState(review.evidence[0]?.id);
-  const people = [...review.structuredData.applicants, ...review.structuredData.players, ...review.structuredData.representatives];
-  const selected = review.evidence.find((item) => item.id === selectedEvidenceId);
-  return <ImageBackground source={require('../../../assets/authentication/liquid-emerald-abstract-v1.png')} style={styles.background} resizeMode="cover"><View style={styles.scrim} /><View style={[styles.shell, !desktop && styles.shellMobile]}>
-    {desktop ? <View style={styles.sidebar}><View><Brand dense /><View style={styles.nav}><Text style={styles.navActive}>Solicitudes</Text><Text style={styles.navItem}>Expedientes</Text><Text style={styles.navItem}>Historial</Text></View></View><View style={styles.sidebarBottom}><Text style={styles.adminLabel}>Administrador</Text><Pressable accessibilityRole="button" onPress={onLogout}><Text style={styles.link}>Cerrar sesión</Text></Pressable></View></View> : null}
-    <ScrollView contentContainerStyle={[styles.page, previewMode === 'mobile' && styles.mobilePreview]}>
-      <View style={styles.top}>{!desktop ? <Brand dense /> : null}<Pressable accessibilityRole="button" onPress={onBack}><Text style={styles.link}>← Volver a solicitudes</Text></Pressable>{!desktop ? <Pressable accessibilityRole="button" onPress={onLogout}><Text style={styles.link}>Cerrar sesión</Text></Pressable> : null}</View>
-      <Text accessibilityRole="header" style={styles.title}>Revisión de solicitud</Text><Text style={styles.subtitle}>{requestLabel(review.type)} · {review.id.slice(0, 8).toUpperCase()} · versión {review.version}</Text>
-      {!review.versionFresh ? <Text accessibilityLiveRegion="assertive" style={styles.warning}>Esta vista quedó desactualizada. Recarga antes de decidir.</Text> : null}
-      <View style={[styles.columns, desktop && styles.columnsDesktop]}><View style={styles.primaryColumn}>
-        <LiquidGlassPanel style={styles.card}><Text style={styles.cardTitle}>Información de la solicitud</Text>{people.map((person, index) => <View key={String(person.id ?? index)} style={styles.group}>{entries(person).map(([key, value]) => <Data key={key} label={label(key)} value={safeDisplay(key, value)} />)}</View>)}{entries(review.structuredData.detail).map(([key, value]) => <Data key={key} label={label(key)} value={safeDisplay(key, value)} />)}</LiquidGlassPanel>
-        <LiquidGlassPanel style={styles.card}><Text style={styles.cardTitle}>Consentimientos registrados</Text>{review.consents.map((consent) => <Data key={`${consent.type}-${consent.version}`} label={label(consent.type)} value={`Versión ${consent.version}`} />)}</LiquidGlassPanel>
-        <LiquidGlassPanel style={styles.card}><Text style={styles.cardTitle}>Verificación interna</Text><Text style={styles.body}>{review.duplicateReview.canApprove ? 'Sin conflictos pendientes para continuar.' : 'Revisión interna pendiente antes de aprobar.'}</Text></LiquidGlassPanel>
-      </View><LiquidGlassPanel style={[styles.card, styles.evidenceColumn]}><Text style={styles.cardTitle}>Documentos de la solicitud</Text><Text style={styles.body}>Consulta autorizada; el archivo no se conserva en esta pantalla.</Text>
-        <View style={styles.viewer}>{evidenceLoading ? <Text style={styles.body}>Cargando documento protegido…</Text> : evidenceUrl && Platform.OS === 'web' ? React.createElement('iframe', { src: evidenceUrl, title: `Documento ${label(selected?.category ?? '')}`, style: { width: '100%', height: 300, border: 0, borderRadius: 8, background: '#fff' } }) : <><Text style={styles.viewerIcon}>▧</Text><Text style={styles.evidenceTitle}>Selecciona un documento para inspeccionarlo</Text></>}</View>
-        {review.evidence.map((item) => <Pressable accessibilityRole="button" accessibilityLabel={`Consultar ${label(item.category)}`} key={item.id} onPress={() => { setSelectedEvidenceId(item.id); onOpenEvidence(item.id); }} style={[styles.evidenceRow, selectedEvidenceId === item.id && styles.evidenceSelected]}><View><Text style={styles.evidenceTitle}>{label(item.category)}</Text><Text style={styles.body}>{item.status === 'CLEAN' ? 'Disponible para revisión' : 'No disponible'}</Text></View><Text style={styles.arrow}>›</Text></Pressable>)}
-      </LiquidGlassPanel></View>
-      <View style={styles.timeline}><Text style={styles.cardTitle}>Proceso de revisión</Text><View style={styles.timelineSteps}>{['Información revisada', 'Expediente manual creado', 'Resultado revisado', 'Eliminación segura de evidencias', 'Respuesta enviada'].map((step, index) => <View key={step} style={styles.timelineRow}><View style={[styles.dot, index > 0 && styles.dotPending]} /><Text style={index === 0 ? styles.evidenceTitle : styles.body}>{step}</Text></View>)}</View><Text style={styles.body}>El historial operativo se mantiene separado de las consultas de documentos.</Text></View>
-      <View style={[styles.actions, !desktop && styles.actionsMobile]}><Pressable accessibilityRole="button" onPress={onCorrection} style={styles.secondary}><Text style={styles.secondaryText}>Solicitar corrección</Text></Pressable><Pressable accessibilityRole="button" onPress={onReject} style={styles.danger}><Text style={styles.secondaryText}>Rechazar</Text></Pressable><Pressable accessibilityRole="button" accessibilityState={{ disabled: !review.versionFresh || !review.duplicateReview.canApprove }} disabled={!review.versionFresh || !review.duplicateReview.canApprove} onPress={onContinue} style={styles.primary}><Text style={styles.primaryText}>Continuar revisión</Text></Pressable></View>
+export function AdminRequestReview({
+  review,
+  onBack,
+  onOpenEvidence,
+  onCorrection = () => undefined,
+  onReject = () => undefined,
+  onContinue,
+  evidenceUrl,
+  evidenceLoading = false,
+  previewMode,
+}: Props) {
+  const desktop = previewMode
+    ? previewMode === "desktop"
+    : useWindowDimensions().width >= authTokens.breakpoints.desktop;
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState(
+    review.evidence[0]?.id,
+  );
+  const people = [
+    ...review.structuredData.applicants,
+    ...review.structuredData.players,
+    ...review.structuredData.representatives,
+  ];
+  const selected = review.evidence.find(
+    (item) => item.id === selectedEvidenceId,
+  );
+  return (
+    <ScrollView
+      contentContainerStyle={[
+        styles.page,
+        previewMode === "mobile" && styles.mobilePreview,
+      ]}
+    >
+      <View style={styles.top}>
+        <Pressable accessibilityRole="button" onPress={onBack}>
+          <Text style={styles.link}>← Volver a solicitudes</Text>
+        </Pressable>
+      </View>
+      <Text accessibilityRole="header" style={styles.title}>
+        Revisión de solicitud
+      </Text>
+      <Text style={styles.subtitle}>
+        {requestLabel(review.type)} · {review.id.slice(0, 8).toUpperCase()} ·
+        versión {review.version}
+      </Text>
+      {!review.versionFresh ? (
+        <Text accessibilityLiveRegion="assertive" style={styles.warning}>
+          Esta vista quedó desactualizada. Recarga antes de decidir.
+        </Text>
+      ) : null}
+      <View style={[styles.columns, desktop && styles.columnsDesktop]}>
+        <View style={styles.primaryColumn}>
+          <LiquidGlassPanel style={styles.card}>
+            <Text style={styles.cardTitle}>Información de la solicitud</Text>
+            {people.map((person, index) => (
+              <View key={String(person.id ?? index)} style={styles.group}>
+                {entries(person).map(([key, value]) => (
+                  <Data
+                    key={key}
+                    label={label(key)}
+                    value={safeDisplay(key, value)}
+                  />
+                ))}
+              </View>
+            ))}
+            {entries(review.structuredData.detail).map(([key, value]) => (
+              <Data
+                key={key}
+                label={label(key)}
+                value={safeDisplay(key, value)}
+              />
+            ))}
+          </LiquidGlassPanel>
+          <LiquidGlassPanel style={styles.card}>
+            <Text style={styles.cardTitle}>Consentimientos registrados</Text>
+            {review.consents.map((consent) => (
+              <Data
+                key={`${consent.type}-${consent.version}`}
+                label={label(consent.type)}
+                value={`Versión ${consent.version}`}
+              />
+            ))}
+          </LiquidGlassPanel>
+          <LiquidGlassPanel style={styles.card}>
+            <Text style={styles.cardTitle}>Verificación interna</Text>
+            <Text style={styles.body}>
+              {review.duplicateReview.canApprove
+                ? "Sin conflictos pendientes para continuar."
+                : "Revisión interna pendiente antes de aprobar."}
+            </Text>
+          </LiquidGlassPanel>
+        </View>
+        <LiquidGlassPanel style={[styles.card, styles.evidenceColumn]}>
+          <Text style={styles.cardTitle}>Documentos de la solicitud</Text>
+          <Text style={styles.body}>
+            Consulta autorizada; el archivo no se conserva en esta pantalla.
+          </Text>
+          <View style={styles.viewer}>
+            {evidenceLoading ? (
+              <Text style={styles.body}>Cargando documento protegido…</Text>
+            ) : evidenceUrl && Platform.OS === "web" ? (
+              React.createElement("iframe", {
+                src: evidenceUrl,
+                title: `Documento ${label(selected?.category ?? "")}`,
+                style: {
+                  width: "100%",
+                  height: 300,
+                  border: 0,
+                  borderRadius: 8,
+                  background: "#fff",
+                },
+              })
+            ) : (
+              <>
+                <Text style={styles.viewerIcon}>▧</Text>
+                <Text style={styles.evidenceTitle}>
+                  Selecciona un documento para inspeccionarlo
+                </Text>
+              </>
+            )}
+          </View>
+          {review.evidence.map((item) => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Consultar ${label(item.category)}`}
+              key={item.id}
+              onPress={() => {
+                setSelectedEvidenceId(item.id);
+                onOpenEvidence(item.id);
+              }}
+              style={[
+                styles.evidenceRow,
+                selectedEvidenceId === item.id && styles.evidenceSelected,
+              ]}
+            >
+              <View>
+                <Text style={styles.evidenceTitle}>{label(item.category)}</Text>
+                <Text style={styles.body}>
+                  {item.status === "CLEAN"
+                    ? "Disponible para revisión"
+                    : "No disponible"}
+                </Text>
+              </View>
+              <Text style={styles.arrow}>›</Text>
+            </Pressable>
+          ))}
+        </LiquidGlassPanel>
+      </View>
+      <View style={styles.timeline}>
+        <Text style={styles.cardTitle}>Proceso de revisión</Text>
+        <View style={styles.timelineSteps}>
+          {[
+            "Información revisada",
+            "Expediente manual creado",
+            "Resultado revisado",
+            "Eliminación segura de evidencias",
+            "Respuesta enviada",
+          ].map((step, index) => (
+            <View key={step} style={styles.timelineRow}>
+              <View style={[styles.dot, index > 0 && styles.dotPending]} />
+              <Text style={index === 0 ? styles.evidenceTitle : styles.body}>
+                {step}
+              </Text>
+            </View>
+          ))}
+        </View>
+        <Text style={styles.body}>
+          El historial operativo se mantiene separado de las consultas de
+          documentos.
+        </Text>
+      </View>
+      <View style={[styles.actions, !desktop && styles.actionsMobile]}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onCorrection}
+          style={styles.secondary}
+        >
+          <Text style={styles.secondaryText}>Solicitar corrección</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onReject}
+          style={styles.danger}
+        >
+          <Text style={styles.secondaryText}>Rechazar</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled:
+              !review.versionFresh || !review.duplicateReview.canApprove,
+          }}
+          disabled={!review.versionFresh || !review.duplicateReview.canApprove}
+          onPress={onContinue}
+          style={styles.primary}
+        >
+          <Text style={styles.primaryText}>Continuar revisión</Text>
+        </Pressable>
+      </View>
     </ScrollView>
-  </View></ImageBackground>;
+  );
 }
 
-function entries(value: Record<string, unknown>): [string, string][] { return Object.entries(value).flatMap<[string, string]>(([key, item]) => typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean' ? [[key, item === true ? 'Sí' : item === false ? 'No' : String(item)]] : item && typeof item === 'object' && !Array.isArray(item) ? entries(item as Record<string, unknown>).map(([nested, text]): [string, string] => [`${key}.${nested}`, text]) : []); }
-const labels: Record<string, string> = { id: 'Registro', legalName: 'Nombre legal', birthDate: 'Fecha de nacimiento', 'document.type': 'Tipo de documento', 'document.number': 'Número de documento', email: 'Correo', phone: 'Teléfono', actingForSelf: 'Actúa por cuenta propia', PRIVACY: 'Privacidad', IDENTITY_FRONT: 'Documento de identidad · frente', IDENTITY_BACK: 'Documento de identidad · reverso' };
-function label(value: string): string { return labels[value] ?? value.replaceAll('_', ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().replace(/^./, (letter) => letter.toUpperCase()); }
-function requestLabel(type: string): string { return type === 'PERSONAL_ADULT' ? 'Registro personal · adulto' : label(type); }
-function safeDisplay(key: string, value: string): string { const lowered = key.toLowerCase(); if (lowered.includes('document.number')) return value.length > 4 ? `•••• ${value.slice(-4)}` : 'Documento verificado'; if (lowered.includes('email')) { const [name = '', domain] = value.split('@'); return domain ? `${name.slice(0, 2)}•••@${domain}` : 'Correo verificado'; } if (lowered.includes('phone')) return value.length > 4 ? `•••• ${value.slice(-4)}` : 'Teléfono verificado'; return value; }
-function Data({ label: name, value }: Readonly<{ label: string; value: string }>) { return <View style={styles.data}><Text style={styles.dataLabel}>{name}</Text><Text style={styles.dataValue}>{value}</Text></View>; }
+function entries(value: Record<string, unknown>): [string, string][] {
+  return Object.entries(value).flatMap<[string, string]>(([key, item]) =>
+    typeof item === "string" ||
+    typeof item === "number" ||
+    typeof item === "boolean"
+      ? [[key, item === true ? "Sí" : item === false ? "No" : String(item)]]
+      : item && typeof item === "object" && !Array.isArray(item)
+        ? entries(item as Record<string, unknown>).map(
+            ([nested, text]): [string, string] => [`${key}.${nested}`, text],
+          )
+        : [],
+  );
+}
+const labels: Record<string, string> = {
+  id: "Registro",
+  legalName: "Nombre legal",
+  birthDate: "Fecha de nacimiento",
+  "document.type": "Tipo de documento",
+  "document.number": "Número de documento",
+  email: "Correo",
+  phone: "Teléfono",
+  actingForSelf: "Actúa por cuenta propia",
+  PRIVACY: "Privacidad",
+  IDENTITY_FRONT: "Documento de identidad · frente",
+  IDENTITY_BACK: "Documento de identidad · reverso",
+};
+function label(value: string): string {
+  return (
+    labels[value] ??
+    value
+      .replaceAll("_", " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .toLowerCase()
+      .replace(/^./, (letter) => letter.toUpperCase())
+  );
+}
+function requestLabel(type: string): string {
+  return type === "PERSONAL_ADULT" ? "Registro personal · adulto" : label(type);
+}
+function safeDisplay(key: string, value: string): string {
+  const lowered = key.toLowerCase();
+  if (lowered.includes("document.number"))
+    return value.length > 4
+      ? `•••• ${value.slice(-4)}`
+      : "Documento verificado";
+  if (lowered.includes("email")) {
+    const [name = "", domain] = value.split("@");
+    return domain ? `${name.slice(0, 2)}•••@${domain}` : "Correo verificado";
+  }
+  if (lowered.includes("phone"))
+    return value.length > 4 ? `•••• ${value.slice(-4)}` : "Teléfono verificado";
+  return value;
+}
+function Data({
+  label: name,
+  value,
+}: Readonly<{ label: string; value: string }>) {
+  return (
+    <View style={styles.data}>
+      <Text style={styles.dataLabel}>{name}</Text>
+      <Text style={styles.dataValue}>{value}</Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  background: { backgroundColor: '#03130d', flex: 1, minHeight: '100%' }, scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,12,8,.48)' }, shell: { flex: 1, flexDirection: 'row', minHeight: '100%' }, shellMobile: { flexDirection: 'column' }, sidebar: { borderRightColor: 'rgba(210,255,226,.2)', borderRightWidth: 1, justifyContent: 'space-between', padding: 28, width: 224 }, nav: { gap: 20, marginTop: 48 }, navActive: { color: '#c7ff2e', fontSize: 16, fontWeight: '900' }, navItem: { color: '#b9cac0', fontSize: 16 }, sidebarBottom: { gap: 8 }, adminLabel: { color: '#f5f7ef', fontWeight: '900' }, page: { alignSelf: 'center', flexGrow: 1, gap: 18, maxWidth: 1220, padding: 28, width: '100%' }, mobilePreview: { maxWidth: 430 }, top: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' }, link: { color: '#c7ff2e', fontWeight: '800', paddingVertical: 8 }, title: { color: '#f5f7ef', fontSize: 42, fontWeight: '900', letterSpacing: -1 }, subtitle: { color: '#c7d3cc', fontSize: 16 }, warning: { backgroundColor: 'rgba(255,190,70,.18)', borderRadius: 8, color: '#ffd38a', padding: 12 },
-  columns: { gap: 18 }, columnsDesktop: { alignItems: 'flex-start', flexDirection: 'row' }, primaryColumn: { flex: 1.15, gap: 18 }, evidenceColumn: { flex: .85, width: '100%' }, card: { gap: 14, padding: 20 }, cardTitle: { color: '#f5f7ef', fontSize: 21, fontWeight: '900' }, group: { borderBottomColor: 'rgba(210,255,226,.14)', borderBottomWidth: 1, gap: 10, paddingBottom: 14 }, data: { flexDirection: 'row', gap: 12, justifyContent: 'space-between' }, dataLabel: { color: '#9fb2a6', flex: 1, fontSize: 13 }, dataValue: { color: '#f5f7ef', flex: 1.5, fontSize: 14, fontWeight: '700', textAlign: 'right' }, body: { color: '#b9cac0', fontSize: 13, lineHeight: 20 }, viewer: { alignItems: 'center', backgroundColor: 'rgba(2,18,12,.55)', borderColor: 'rgba(210,255,226,.16)', borderRadius: 8, borderWidth: 1, gap: 8, minHeight: 220, justifyContent: 'center', overflow: 'hidden', padding: 8 }, viewerIcon: { color: '#75e7a7', fontSize: 42 }, evidenceRow: { alignItems: 'center', borderColor: 'rgba(210,255,226,.18)', borderRadius: 8, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 68, padding: 13 }, evidenceSelected: { borderColor: '#75e7a7' }, evidenceTitle: { color: '#f5f7ef', fontSize: 15, fontWeight: '800' }, arrow: { color: '#c7ff2e', fontSize: 28 },
-  timeline: { borderTopColor: 'rgba(210,255,226,.22)', borderTopWidth: 1, gap: 15, marginTop: 12, paddingTop: 24 }, timelineSteps: { flexDirection: 'row', flexWrap: 'wrap', gap: 20 }, timelineRow: { alignItems: 'center', flexDirection: 'row', gap: 9 }, dot: { backgroundColor: '#75e7a7', borderRadius: 6, height: 12, width: 12 }, dotPending: { backgroundColor: '#66776e' }, actions: { borderTopColor: 'rgba(210,255,226,.22)', borderTopWidth: 1, flexDirection: 'row', gap: 14, paddingTop: 20 }, actionsMobile: { flexDirection: 'column' }, secondary: { alignItems: 'center', borderColor: '#d7e4dc', borderRadius: 8, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 54 }, danger: { alignItems: 'center', borderColor: '#ff9f87', borderRadius: 8, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 54 }, secondaryText: { color: '#f5f7ef', fontWeight: '800' }, primary: { alignItems: 'center', backgroundColor: '#c7ff2e', borderRadius: 8, flex: 1.4, justifyContent: 'center', minHeight: 54 }, primaryText: { color: '#06150f', fontWeight: '900' },
+  page: {
+    alignSelf: "center",
+    flexGrow: 1,
+    gap: 18,
+    maxWidth: 1220,
+    padding: 28,
+    width: "100%",
+  },
+  mobilePreview: { maxWidth: 430 },
+  top: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 18,
+    justifyContent: "space-between",
+  },
+  link: { color: "#c7ff2e", fontWeight: "800", paddingVertical: 8 },
+  title: {
+    color: "#f5f7ef",
+    fontSize: 42,
+    fontWeight: "900",
+    letterSpacing: -1,
+  },
+  subtitle: { color: "#c7d3cc", fontSize: 16 },
+  warning: {
+    backgroundColor: "rgba(255,190,70,.18)",
+    borderRadius: 8,
+    color: "#ffd38a",
+    padding: 12,
+  },
+  columns: { gap: 18 },
+  columnsDesktop: { alignItems: "flex-start", flexDirection: "row" },
+  primaryColumn: { flex: 1.15, gap: 18 },
+  evidenceColumn: { flex: 0.85, width: "100%" },
+  card: { gap: 14, padding: 20 },
+  cardTitle: { color: "#f5f7ef", fontSize: 21, fontWeight: "900" },
+  group: {
+    borderBottomColor: "rgba(210,255,226,.14)",
+    borderBottomWidth: 1,
+    gap: 10,
+    paddingBottom: 14,
+  },
+  data: { flexDirection: "row", gap: 12, justifyContent: "space-between" },
+  dataLabel: { color: "#9fb2a6", flex: 1, fontSize: 13 },
+  dataValue: {
+    color: "#f5f7ef",
+    flex: 1.5,
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  body: { color: "#b9cac0", fontSize: 13, lineHeight: 20 },
+  viewer: {
+    alignItems: "center",
+    backgroundColor: "rgba(2,18,12,.55)",
+    borderColor: "rgba(210,255,226,.16)",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+    minHeight: 220,
+    justifyContent: "center",
+    overflow: "hidden",
+    padding: 8,
+  },
+  viewerIcon: { color: "#75e7a7", fontSize: 42 },
+  evidenceRow: {
+    alignItems: "center",
+    borderColor: "rgba(210,255,226,.18)",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 68,
+    padding: 13,
+  },
+  evidenceSelected: { borderColor: "#75e7a7" },
+  evidenceTitle: { color: "#f5f7ef", fontSize: 15, fontWeight: "800" },
+  arrow: { color: "#c7ff2e", fontSize: 28 },
+  timeline: {
+    borderTopColor: "rgba(210,255,226,.22)",
+    borderTopWidth: 1,
+    gap: 15,
+    marginTop: 12,
+    paddingTop: 24,
+  },
+  timelineSteps: { flexDirection: "row", flexWrap: "wrap", gap: 20 },
+  timelineRow: { alignItems: "center", flexDirection: "row", gap: 9 },
+  dot: { backgroundColor: "#75e7a7", borderRadius: 6, height: 12, width: 12 },
+  dotPending: { backgroundColor: "#66776e" },
+  actions: {
+    borderTopColor: "rgba(210,255,226,.22)",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 14,
+    paddingTop: 20,
+  },
+  actionsMobile: { flexDirection: "column" },
+  secondary: {
+    alignItems: "center",
+    borderColor: "#d7e4dc",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 54,
+  },
+  danger: {
+    alignItems: "center",
+    borderColor: "#ff9f87",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 54,
+  },
+  secondaryText: { color: "#f5f7ef", fontWeight: "800" },
+  primary: {
+    alignItems: "center",
+    backgroundColor: "#c7ff2e",
+    borderRadius: 8,
+    flex: 1.4,
+    justifyContent: "center",
+    minHeight: 54,
+  },
+  primaryText: { color: "#06150f", fontWeight: "900" },
 });

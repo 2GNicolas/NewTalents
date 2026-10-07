@@ -93,11 +93,12 @@ describe('Feature 006 Administrator decisions', () => {
     const types: RegistrationRequestType[] = ['PERSONAL_ADULT', 'REPRESENTED_MINOR', 'FORMAL_ACADEMY', 'NATURAL_PERSON_ACADEMY', 'ADDITIONAL_ACADEMY_ACCOUNT', 'ACADEMY_ADULT_PLAYER', 'ACADEMY_MINOR_PLAYER'];
     for (const type of types) {
       const fixture = await createSubmitted(type); const idempotencyKey = randomUUID();
-      await expect(service.prepare(administratorIdentityId, fixture.requestId, { expectedVersion: 0, idempotencyKey, manualDossierConfirmation: { confirmed: true, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toMatchObject({ outcome: 'pending-deletion' });
+      await expect(service.prepare(administratorIdentityId, fixture.requestId, { expectedVersion: 0, idempotencyKey, manualDossierConfirmation: { confirmed: true, dossierName: `exp-${type.toLowerCase()}`, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toMatchObject({ outcome: 'pending-deletion' });
+      await expect(clients[0].registrationManualDossierConfirmation.findFirstOrThrow({ where: { requestId: fixture.requestId }, select: { dossierName: true } })).resolves.toEqual({ dossierName: `exp-${type.toLowerCase()}` });
       expect(calls.filter((value) => value === type)).toHaveLength(0);
       await completeDeletion(fixture.requestId, 1);
-      await expect(service.prepare(administratorIdentityId, fixture.requestId, { expectedVersion: 0, idempotencyKey, manualDossierConfirmation: { confirmed: true, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toMatchObject({ outcome: 'approved' });
-      await expect(service.prepare(administratorIdentityId, fixture.requestId, { expectedVersion: 0, idempotencyKey, manualDossierConfirmation: { confirmed: true, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toMatchObject({ outcome: 'approved' });
+      await expect(service.prepare(administratorIdentityId, fixture.requestId, { expectedVersion: 0, idempotencyKey, manualDossierConfirmation: { confirmed: true, dossierName: `exp-${type.toLowerCase()}`, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toMatchObject({ outcome: 'approved' });
+      await expect(service.prepare(administratorIdentityId, fixture.requestId, { expectedVersion: 0, idempotencyKey, manualDossierConfirmation: { confirmed: true, dossierName: `exp-${type.toLowerCase()}`, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toMatchObject({ outcome: 'approved' });
       expect(calls.filter((value) => value === type)).toHaveLength(1);
     }
     expect(new Set(calls)).toEqual(new Set(types));
@@ -106,7 +107,7 @@ describe('Feature 006 Administrator decisions', () => {
   it('surfaces deletion recovery and serializes approval preparation against rejection', async () => {
     const administratorIdentityId = randomUUID(); identityIds.push(administratorIdentityId); await clients[0].identity.create({ data: { id: administratorIdentityId } });
     const recovery = await createSubmitted('PERSONAL_ADULT'); const calls: RegistrationRequestType[] = []; const service = approvalService(clients[0], calls); const key = randomUUID();
-    await service.prepare(administratorIdentityId, recovery.requestId, { expectedVersion: 0, idempotencyKey: key, manualDossierConfirmation: { confirmed: true, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } });
+    await service.prepare(administratorIdentityId, recovery.requestId, { expectedVersion: 0, idempotencyKey: key, manualDossierConfirmation: { confirmed: true, dossierName: 'exp-recuperacion', declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } });
     await clients[0].registrationEvidenceDeletionRecord.updateMany({ where: { requestId: recovery.requestId }, data: { status: 'RECOVERY_REQUIRED', attempts: 5 } });
     const recoveryExecution = await clients[0].registrationApprovalExecution.findFirstOrThrow({ where: { requestId: recovery.requestId } });
     await expect(service.finalize(recoveryExecution.id, administratorIdentityId)).resolves.toMatchObject({ outcome: 'recovery-required' });
@@ -118,7 +119,7 @@ describe('Feature 006 Administrator decisions', () => {
     const raced = await createSubmitted('PERSONAL_ADULT'); const raceCalls: RegistrationRequestType[] = [];
     const decision = new AdminRegistrationDecisionService(clients[1] as never, { authorize: vi.fn().mockResolvedValue({ allowed: true }) } as never);
     const results = await Promise.all([
-      approvalService(clients[0], raceCalls).prepare(administratorIdentityId, raced.requestId, { expectedVersion: 0, idempotencyKey: randomUUID(), manualDossierConfirmation: { confirmed: true, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } }),
+      approvalService(clients[0], raceCalls).prepare(administratorIdentityId, raced.requestId, { expectedVersion: 0, idempotencyKey: randomUUID(), manualDossierConfirmation: { confirmed: true, dossierName: 'exp-carrera', declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } }),
       decision.reject(administratorIdentityId, raced.requestId, { expectedVersion: 0, idempotencyKey: randomUUID(), safeReason: 'La evidencia sintética no acredita la solicitud.' }),
     ]);
     expect(results.filter(({ outcome }) => outcome === 'pending-deletion' || outcome === 'applied')).toHaveLength(1);

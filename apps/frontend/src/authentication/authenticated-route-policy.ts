@@ -9,11 +9,26 @@ const AUTH_ROUTES = ['/login', '/activate-initial-access'] as const;
 const PASSPORT_ROUTE_PREFIX = '/passports';
 const ACADEMY_REGISTRATION_ROUTE = '/registration';
 const ADMIN_REGISTRATION_ROUTE = '/admin/registration';
+const ADMIN_ROUTE = '/admin';
+
+function requiredAdministratorCapability(pathname: string): string | undefined {
+  if (pathname === ADMIN_ROUTE) return 'registration.review.list';
+  if (pathname === ADMIN_REGISTRATION_ROUTE || pathname.startsWith(`${ADMIN_REGISTRATION_ROUTE}/`)) return 'registration.review.list';
+  if (pathname === '/admin/dossiers') return 'registration.dossier.list';
+  if (pathname.startsWith('/admin/dossiers/')) return 'registration.dossier.view';
+  if (pathname === '/admin/custody') return 'passport.custody.list';
+  if (pathname.startsWith('/admin/custody/')) return 'passport.custody.view';
+  return undefined;
+}
 
 export function authenticatedEntry(access?: SessionAccessProjection | null): string {
-  if (access?.classification === 'product' && access.capabilities.includes('registration.review.list')) return '/(admin)/admin/registration';
+  if (access?.classification === 'product' && access.capabilities.includes('registration.review.list')) return '/(admin)/admin';
   if (access?.classification === 'product' && access.capabilities.some((capability) => capability.startsWith('registration.request.academy.'))) return access.academyId ? `/(academy)/registration?academyId=${encodeURIComponent(access.academyId)}` : '/(academy)/registration';
   return AUTHENTICATED_PRODUCT_ENTRY;
+}
+
+export function usesAnalystCustodyCollection(access?: SessionAccessProjection | null): boolean {
+  return access?.classification === 'product' && access.capabilities.includes('passport.review');
 }
 
 export type RootRouteAction =
@@ -38,8 +53,11 @@ export function resolveRootRouteAction(phase: AuthenticationState['phase'], path
   if (phase === 'authenticated' && access?.classification === 'product' && (pathname === ACADEMY_REGISTRATION_ROUTE || pathname.startsWith(`${ACADEMY_REGISTRATION_ROUTE}/`))) {
     return access.capabilities.some((capability) => capability.startsWith('registration.request.academy.')) ? { type: 'none' } : { type: 'replace', href: AUTHENTICATED_PRODUCT_ENTRY };
   }
-  if (phase === 'authenticated' && access?.classification === 'product' && (pathname === ADMIN_REGISTRATION_ROUTE || pathname.startsWith(`${ADMIN_REGISTRATION_ROUTE}/`))) {
-    return access.capabilities.includes('registration.review.list') ? { type: 'none' } : { type: 'replace', href: AUTHENTICATED_PRODUCT_ENTRY };
+  if (phase === 'authenticated' && access?.classification === 'product' && (pathname === ADMIN_ROUTE || pathname.startsWith(`${ADMIN_ROUTE}/`))) {
+    const requiredCapability = requiredAdministratorCapability(pathname);
+    return requiredCapability && access.capabilities.includes(requiredCapability)
+      ? { type: 'none' }
+      : { type: 'replace', href: access.capabilities.includes('registration.review.list') ? '/(admin)/admin' : AUTHENTICATED_PRODUCT_ENTRY };
   }
   if (phase === 'authenticated' && access === null) return { type: 'none' };
   if (phase === 'authenticated' && !isPassportRoute(pathname)) {

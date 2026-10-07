@@ -21,6 +21,7 @@ export type RegistrationAuthorizationRequest = Readonly<{
   duplicateConflictAbsent?: boolean;
   manualDossierConfirmed?: boolean;
   deletionState?: ResourceFacts['deletionState'];
+  dossierConfirmed?: boolean;
 }>;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -85,7 +86,8 @@ export class RegistrationAuthorizationAdapter {
       ...(input.duplicateConflictAbsent === undefined ? {} : { duplicateConflictAbsent: input.duplicateConflictAbsent }),
       ...(input.manualDossierConfirmed === undefined ? {} : { manualDossierConfirmed: input.manualDossierConfirmed }),
       ...(input.deletionState === undefined ? {} : { deletionState: input.deletionState }),
-      administratorCapability: input.permission.startsWith('registration.review.'),
+      administratorCapability: input.permission.startsWith('registration.review.') || input.permission.startsWith('registration.dossier.'),
+      ...(input.dossierConfirmed === undefined ? {} : { dossierConfirmed: input.dossierConfirmed }),
     };
 
     return this.authorization.evaluate({

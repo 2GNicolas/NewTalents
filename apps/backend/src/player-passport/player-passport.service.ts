@@ -131,17 +131,17 @@ export class PlayerPassportService {
 
   async listAccessible(identityId: string, context: 'PARTICULAR' | 'ACADEMY', academyId?: string) {
     const identity = await this.prisma.identity.findUnique({ where: { id: identityId }, include: { roleAssignments: { where: { status: 'ACTIVE' } } } });
-    const internal = identity?.roleAssignments.some((assignment) => assignment.role === 'ANALYST' || assignment.role === 'ADMINISTRATOR') ?? false;
+    const administrator = identity?.status === 'ACTIVE' && identity.roleAssignments.some((assignment) => assignment.role === 'ADMINISTRATOR');
     if (context === 'PARTICULAR') {
       return this.prisma.playerPassport.findMany({
-        where: internal ? { originKind: { in: ['PARTICULAR', 'TUTOR'] } } : { OR: [
+        where: administrator ? { originKind: { in: ['PARTICULAR', 'TUTOR'] } } : { OR: [
           { responsibilities: { some: { identityId, kind: { in: ['SELF', 'LEGAL_REPRESENTATIVE'] } } } },
           { player: { initialTutorResponsibility: { tutorIdentityId: identityId } } },
         ] },
         orderBy: { createdAt: 'desc' },
       });
     }
-    if (internal) return this.prisma.playerPassport.findMany({ where: { originKind: 'ACADEMY' }, orderBy: { createdAt: 'desc' } });
+    if (administrator) return this.prisma.playerPassport.findMany({ where: { originKind: 'ACADEMY' }, orderBy: { createdAt: 'desc' } });
     const memberships = await this.prisma.academyMembership.findMany({ where: { identityId, status: 'ACTIVE' }, select: { academyId: true } });
     const academyIds = memberships.map((membership) => membership.academyId).filter((id) => academyId === undefined || id === academyId);
     if (academyIds.length === 0) return [];

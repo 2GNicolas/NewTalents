@@ -337,7 +337,7 @@ export class PassportController {
 
     const passport = await this.loadPassport(passportId);
     if (!passport) return this.error(response, 404, 'passport_not_found');
-    if (!(await this.canReview(request.actor.identityId)).allowed) return this.error(response, 403, 'forbidden');
+    if (!(await this.canReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
 
     const result = await this.transactionRunner.execute((transaction) => this.transitions.returnForCorrection(transaction, {
       passportId,
@@ -361,7 +361,7 @@ export class PassportController {
 
     const passport = await this.loadPassport(passportId);
     if (!passport) return this.error(response, 404, 'passport_not_found');
-    if (!(await this.canReview(request.actor.identityId)).allowed) return this.error(response, 403, 'forbidden');
+    if (!(await this.canReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
 
     const result = await this.transactionRunner.execute(async (transaction) => {
       const signal = await transaction.passportPossibleDuplicateSignal.findFirst({
@@ -400,7 +400,7 @@ export class PassportController {
     if (!parsed.ok) return this.error(response, 400, 'invalid_request');
     const passport = await this.loadPassport(passportId);
     if (!passport) return this.error(response, 404, 'passport_not_found');
-    if (!(await this.canReview(request.actor.identityId)).allowed) return this.error(response, 403, 'forbidden');
+    if (!(await this.canReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
 
     const result = await this.transactionRunner.execute((transaction) => this.transitions.approve(transaction, {
       passportId,
@@ -546,8 +546,8 @@ export class PassportController {
     return academy.allowed;
   }
 
-  private canReview(identityId: string) {
-    return this.authorization.authorize({ identityId, permission: 'passport.review' });
+  private canReview(identityId: string, passportId?: string) {
+    return this.authorization.authorize({ identityId, permission: 'passport.review', ...(passportId ? { passportId } : {}) });
   }
 
   private canActivate(identityId: string) {

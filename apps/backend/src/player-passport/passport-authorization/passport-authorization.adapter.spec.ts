@@ -46,6 +46,7 @@ describe('PassportAuthorizationAdapter', () => {
       select: {
         status: true,
         roleAssignments: { where: { status: 'ACTIVE' }, select: { role: true } },
+        analystOperationalProfile: { select: { identityId: true } },
       },
     });
     expect(prisma.playerPassport.findUnique).toHaveBeenCalledWith({
@@ -155,16 +156,18 @@ describe('PassportAuthorizationAdapter', () => {
     }));
   });
 
-  it('does not load membership or relationship facts for an internal review decision', async () => {
+  it('loads current custody but not membership or tutor facts for an internal review decision', async () => {
     const prisma = {
       identity: {
         findUnique: vi.fn().mockResolvedValue({
           status: 'ACTIVE',
           roleAssignments: [{ role: 'ANALYST' }],
+          analystOperationalProfile: { identityId },
         }),
       },
       academyMembership: { findFirst: vi.fn() },
-      playerPassport: { findUnique: vi.fn() },
+      playerPassport: { findUnique: vi.fn().mockResolvedValue({ id: passportId }) },
+      passportCustody: { findUnique: vi.fn().mockResolvedValue({ currentAnalystIdentityId: identityId }) },
       initialTutorResponsibility: { findUnique: vi.fn() },
     };
     const authorization = { evaluate: vi.fn().mockReturnValue({ allowed: true, policyVersion: '1' }) };
@@ -177,10 +180,11 @@ describe('PassportAuthorizationAdapter', () => {
     })).resolves.toEqual({ allowed: true, policyVersion: '1' });
 
     expect(prisma.academyMembership.findFirst).not.toHaveBeenCalled();
-    expect(prisma.playerPassport.findUnique).not.toHaveBeenCalled();
+    expect(prisma.playerPassport.findUnique).toHaveBeenCalled();
+    expect(prisma.passportCustody.findUnique).toHaveBeenCalledWith({ where: { passportId }, select: { currentAnalystIdentityId: true } });
     expect(prisma.initialTutorResponsibility.findUnique).not.toHaveBeenCalled();
     expect(authorization.evaluate).toHaveBeenCalledWith(expect.objectContaining({
-      resource: { classification: 'protected' },
+      resource: { classification: 'protected', resourceId: passportId, analystCustodyActive: true },
       subject: expect.not.objectContaining({
         academyMembership: expect.anything(),
         tutorRelationship: expect.anything(),

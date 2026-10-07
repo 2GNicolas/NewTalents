@@ -24,6 +24,36 @@ function store(overrides: Partial<PrivateEvidenceStore> = {}): PrivateEvidenceSt
 }
 
 describe('EvidenceDeletionService replacement', () => {
+  it('atomically retires every active uncertain retry before exposing the clean evidence', async () => {
+    const oldest = '30000000-0000-4000-8000-000000000001';
+    const newest = '30000000-0000-4000-8000-000000000002';
+    const replacementId = '40000000-0000-4000-8000-000000000004';
+    const tx = {
+      registrationRequest: { findUnique: vi.fn().mockResolvedValue({ status: 'DRAFT', version: 0 }) },
+      registrationEvidenceItem: {
+        findMany: vi.fn().mockResolvedValue([{ id: newest }, { id: oldest }]),
+        create: vi.fn().mockResolvedValue({ id: replacementId }),
+        update: vi.fn(),
+      },
+      registrationEvidenceDeletionRecord: { upsert: vi.fn() },
+    };
+    const prisma = { $transaction: vi.fn(async (callback) => callback(tx)) } as unknown as PrismaService;
+    const authorization = { authorize: vi.fn().mockResolvedValue({ allowed: true }) } as unknown as RegistrationAuthorizationAdapter;
+    const service = new EvidenceDeletionService(prisma, store(), authorization, config);
+
+    await expect(service.replaceUncertainEvidence({
+      actorIdentityId: actorId,
+      requestId,
+      expectedVersion: 0,
+      category: 'IDENTITY_FRONT',
+      replacement: { objectKey: newKey, declaredMime: 'application/pdf', detectedMime: 'application/pdf', sizeBytes: 32, contentDigest: 'd'.repeat(64), scannerResultCode: 'CLEAN' },
+    })).resolves.toEqual({ outcome: 'replaced', evidenceId: replacementId });
+
+    expect(tx.registrationEvidenceItem.update).toHaveBeenNthCalledWith(1, { where: { id: newest }, data: { status: 'REPLACED', replacedById: replacementId } });
+    expect(tx.registrationEvidenceItem.update).toHaveBeenNthCalledWith(2, { where: { id: oldest }, data: { status: 'REPLACED', replacedById: newest } });
+    expect(tx.registrationEvidenceDeletionRecord.upsert).toHaveBeenCalledTimes(2);
+  });
+
   it('atomically replaces only an explicitly corrected category and schedules the old object once', async () => {
     const tx = {
       registrationRequest: { findUnique: vi.fn().mockResolvedValue({ status: 'REQUIRES_CORRECTION', version: 7, corrections: [{ correctionTargets: ['IDENTITY_FRONT'] }] }) },

@@ -19,7 +19,7 @@ const INITIAL_STATE: PassportState = Object.freeze({ phase: 'idle', context: nul
 export class PassportStateMachine {
   private _state: PassportState = INITIAL_STATE;
   private readonly listeners = new Set<() => void>();
-  private mutationInFlight = false; private loading = false;
+  private mutationInFlight = false; private loading = false; private analystCollection = false;
   constructor(private readonly dependencies: { api: PassportApi; getAccessToken: () => string | null }) {}
   get state() { return this._state; }
   get capabilities(): readonly PassportAction[] { return this._state.status?.availableActions ?? []; }
@@ -28,6 +28,7 @@ export class PassportStateMachine {
   hasCollectionAction = (action: PassportCollectionAction) => this._state.collectionActions?.includes(action) === true;
 
   loadList = async (request: PassportListRequest = { context: 'PARTICULAR' }): Promise<void> => {
+    this.analystCollection = false;
     if (!this.beginLoading()) return;
     this.setState({ context: request.context, academyId: request.context === 'ACADEMY' ? request.academyId ?? null : null, list: null, collectionActions: null });
     try {
@@ -35,6 +36,17 @@ export class PassportStateMachine {
       const result = await this.dependencies.api.list(request, token);
       if (result.kind === 'success') this.setState({ context: result.value.context, list: result.value.passports, collectionActions: result.value.collectionActions, notice: undefined });
       else this.setState({ notice: result.kind });
+    } finally { this.endLoading(); }
+  };
+  loadAnalystPassports = async (request: Readonly<{ cursor?: string; limit?: number }> = {}): Promise<void> => {
+    if (!this.beginLoading()) return;
+    this.analystCollection = true;
+    this.setState({ context: 'PARTICULAR', academyId: null, list: null, collectionActions: [] });
+    try {
+      const token = this.token(); if (!token) return;
+      const result = await this.dependencies.api.listAnalystPassports(request, token);
+      if (result.kind === 'success') this.setState({ list: this.mapAnalystItems(result.value.items), collectionActions: [], notice: undefined });
+      else this.setState({ list: [], notice: result.kind });
     } finally { this.endLoading(); }
   };
   selectPassport = async (passportId: string): Promise<void> => {
@@ -45,7 +57,10 @@ export class PassportStateMachine {
       const [status, presentation] = await Promise.all([this.dependencies.api.status(passportId, token), this.dependencies.api.presentation(passportId, token)]);
       if (status.kind === 'success' && presentation.kind === 'success') { this.setState({ status: status.value, presentation: presentation.value }); return; }
       const failed = status.kind === 'success' ? presentation : status;
-      if (failed.kind !== 'success') this.setState({ ...(failed.kind === 'not-found-safe' ? { activePassportId: null } : {}), notice: failed.kind });
+      if (failed.kind !== 'success') {
+        this.setState({ ...(failed.kind === 'not-found-safe' ? { activePassportId: null, status: null, presentation: null, history: null, internalHistory: null } : {}), notice: failed.kind });
+        if (failed.kind === 'not-found-safe' && this.analystCollection) await this.refreshAnalystCollection(token);
+      }
     } finally { this.endLoading(); }
   };
   loadEditableDraft = async (passportId: string): Promise<void> => {
@@ -64,7 +79,7 @@ export class PassportStateMachine {
   };
   private loadHistoryResult = async (passportId: string, internal: boolean) => {
     if (!this.beginLoading()) return;
-    try { const token = this.token(); if (!token) return; const result = internal ? await this.dependencies.api.internalHistory(passportId, token) : await this.dependencies.api.history(passportId, token); if (result.kind === 'success') this.setState(internal ? { internalHistory: result.value as InternalPassportHistoryResponse, notice: undefined } : { history: result.value as PassportHistoryResponse, notice: undefined }); else this.setState({ notice: result.kind }); }
+    try { const token = this.token(); if (!token) return; const result = internal ? await this.dependencies.api.internalHistory(passportId, token) : await this.dependencies.api.history(passportId, token); if (result.kind === 'success') this.setState(internal ? { internalHistory: result.value as InternalPassportHistoryResponse, notice: undefined } : { history: result.value as PassportHistoryResponse, notice: undefined }); else { this.setState({ ...(result.kind === 'not-found-safe' ? { activePassportId: null, status: null, presentation: null, history: null, internalHistory: null } : {}), notice: result.kind }); if (result.kind === 'not-found-safe' && this.analystCollection) await this.refreshAnalystCollection(token); } }
     finally { this.endLoading(); }
   };
   clearActivePassport = () => this.setState({ phase: 'idle', activePassportId: null, status: null, editableDraft: null, presentation: null, history: null, internalHistory: null, notice: undefined });
@@ -81,7 +96,9 @@ export class PassportStateMachine {
   resolveDuplicate = (id: string, input: ResolveDuplicateInput) => this.mutate('RESOLVE_DUPLICATE', token => this.dependencies.api.resolveDuplicate(id, { ...input, expectedVersion: input.expectedVersion ?? this._state.status?.version }, token));
   approve = (id: string) => this.mutate('APPROVE', token => this.dependencies.api.approve(id, { expectedVersion: this._state.status?.version }, token));
   activate = (id: string) => this.mutate('ACTIVATE', token => this.dependencies.api.activate(id, { expectedVersion: this._state.status?.version }, token));
-  dispose = () => { this.mutationInFlight = false; this.loading = false; this.listeners.clear(); this._state = INITIAL_STATE; };
+  dispose = () => { this.mutationInFlight = false; this.loading = false; this.analystCollection = false; this.listeners.clear(); this._state = INITIAL_STATE; };
+  private mapAnalystItems(items: readonly import('./passport-types').AnalystPassportSummary[]): readonly PassportSummaryResponse[] { return items.map((item) => ({ passportId: item.passportId, displayName: item.displayLabel, lifecycleState: item.lifecycleState, origin: item.academyLabel ? 'ACADEMY' : 'PARTICULAR', academyOriginName: item.academyLabel ?? null, availableActions: ['VIEW', 'VIEW_INTERNAL_HISTORY'] })); }
+  private async refreshAnalystCollection(token: string) { const result = await this.dependencies.api.listAnalystPassports({}, token); if (result.kind === 'success') this.setState({ list: this.mapAnalystItems(result.value.items), collectionActions: [] }); }
   private async mutate(action: PassportAction, operation: (token: string) => Promise<PassportApiResult<PassportStatusResponse>>) { if (!this.hasCapability(action)) return this.denied(); if (!this.beginMutation()) return { kind: 'invalid-state' } as const; try { const token = this.token(); if (!token) return { kind: 'authentication-failed' } as const; const result = await operation(token); this.apply(result); return result; } finally { this.endMutation(); } }
   private token() { const token = this.dependencies.getAccessToken(); if (!token) this.setState({ notice: 'authentication-failed' }); return token; }
   private denied(): PassportApiResult<PassportStatusResponse> { this.setState({ notice: 'forbidden' }); return { kind: 'forbidden' }; }
@@ -93,8 +110,8 @@ export class PassportStateMachine {
   private setState(patch: Partial<PassportState>) { this._state = Object.freeze({ ...this._state, ...patch }); this.listeners.forEach(listener => listener()); }
 }
 
-export type PassportStateValue = Readonly<{ state: PassportState; loadList: PassportStateMachine['loadList']; selectPassport: PassportStateMachine['selectPassport']; loadEditableDraft: PassportStateMachine['loadEditableDraft']; loadHistory: PassportStateMachine['loadHistory']; loadInternalHistory: PassportStateMachine['loadInternalHistory']; clearActivePassport: PassportStateMachine['clearActivePassport']; createDraft: PassportStateMachine['createDraft']; editDraft: PassportStateMachine['editDraft']; submit: PassportStateMachine['submit']; returnForCorrection: PassportStateMachine['returnForCorrection']; resolveDuplicate: PassportStateMachine['resolveDuplicate']; approve: PassportStateMachine['approve']; activate: PassportStateMachine['activate']; hasCapability: PassportStateMachine['hasCapability']; hasCollectionAction: PassportStateMachine['hasCollectionAction'] }>;
+export type PassportStateValue = Readonly<{ state: PassportState; loadList: PassportStateMachine['loadList']; loadAnalystPassports: PassportStateMachine['loadAnalystPassports']; selectPassport: PassportStateMachine['selectPassport']; loadEditableDraft: PassportStateMachine['loadEditableDraft']; loadHistory: PassportStateMachine['loadHistory']; loadInternalHistory: PassportStateMachine['loadInternalHistory']; clearActivePassport: PassportStateMachine['clearActivePassport']; createDraft: PassportStateMachine['createDraft']; editDraft: PassportStateMachine['editDraft']; submit: PassportStateMachine['submit']; returnForCorrection: PassportStateMachine['returnForCorrection']; resolveDuplicate: PassportStateMachine['resolveDuplicate']; approve: PassportStateMachine['approve']; activate: PassportStateMachine['activate']; hasCapability: PassportStateMachine['hasCapability']; hasCollectionAction: PassportStateMachine['hasCollectionAction'] }>;
 const Context = createContext<PassportStateValue | null>(null);
-function value(machine: PassportStateMachine, state: PassportState): PassportStateValue { return Object.freeze({ state, loadList: machine.loadList, selectPassport: machine.selectPassport, loadEditableDraft: machine.loadEditableDraft, loadHistory: machine.loadHistory, loadInternalHistory: machine.loadInternalHistory, clearActivePassport: machine.clearActivePassport, createDraft: machine.createDraft, editDraft: machine.editDraft, submit: machine.submit, returnForCorrection: machine.returnForCorrection, resolveDuplicate: machine.resolveDuplicate, approve: machine.approve, activate: machine.activate, hasCapability: machine.hasCapability, hasCollectionAction: machine.hasCollectionAction }); }
+function value(machine: PassportStateMachine, state: PassportState): PassportStateValue { return Object.freeze({ state, loadList: machine.loadList, loadAnalystPassports: machine.loadAnalystPassports, selectPassport: machine.selectPassport, loadEditableDraft: machine.loadEditableDraft, loadHistory: machine.loadHistory, loadInternalHistory: machine.loadInternalHistory, clearActivePassport: machine.clearActivePassport, createDraft: machine.createDraft, editDraft: machine.editDraft, submit: machine.submit, returnForCorrection: machine.returnForCorrection, resolveDuplicate: machine.resolveDuplicate, approve: machine.approve, activate: machine.activate, hasCapability: machine.hasCapability, hasCollectionAction: machine.hasCollectionAction }); }
 export function PassportStateProvider({ children, dependencies }: PropsWithChildren<{ dependencies?: Dependencies }>) { const ref = useRef<PassportStateMachine | null>(null); if (!ref.current) ref.current = new PassportStateMachine({ api: dependencies?.api ?? createPassportApi(), getAccessToken: dependencies?.getAccessToken ?? (() => null) }); const [state, setState] = useState(ref.current.state); useEffect(() => ref.current?.subscribe(() => setState(ref.current!.state)), []); const context = useMemo(() => value(ref.current!, state), [state]); return createElement(Context.Provider, { value: context }, children); }
 export function usePassportState() { const context = useContext(Context); if (!context) throw new Error('usePassportState must be used within PassportStateProvider'); return context; }

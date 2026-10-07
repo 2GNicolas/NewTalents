@@ -7,6 +7,7 @@ import type { BackendRuntimeConfiguration } from '../../config/environment.schem
 import { PrismaService } from '../../database/prisma.service.js';
 import type { FunctionalRole, PassportLifecycleState } from '../../generated/prisma/client.js';
 import { MembershipTransitionService } from '../../academy-membership/membership-transition.service.js';
+import { AnalystOperationalProfileService } from '../../identity/analyst-operational-profile.service.js';
 import { HistoricalTutorReconciliationService } from '../reconciliation/historical-tutor-reconciliation.service.js';
 import { PassportTraceService } from '../passport-lifecycle/passport-trace.service.js';
 import { PassportTransactionRunner } from '../passport-lifecycle/transaction-runner.js';
@@ -83,6 +84,7 @@ export class LocalReviewProvisioningService {
     private readonly privateIdentities: PrivateIdentityService,
     private readonly traces: PassportTraceService,
     private readonly tutorReconciliation: HistoricalTutorReconciliationService,
+    private readonly analystProfiles: AnalystOperationalProfileService,
     @Inject(BACKEND_RUNTIME_CONFIGURATION) private readonly configuration: BackendRuntimeConfiguration,
   ) {}
 
@@ -99,6 +101,13 @@ export class LocalReviewProvisioningService {
     const administratorId = this.requiredIdentity(identities, 'admin');
     for (const key of Object.keys(ACCOUNTS) as AccountKey[]) {
       await this.ensureRoles(this.requiredIdentity(identities, key), ACCOUNTS[key].roles, administratorId);
+    }
+    const analystProfile = await this.analystProfiles.provision({
+      identityId: this.requiredIdentity(identities, 'analyst'),
+      displayLabel: 'Analista de revisión',
+    });
+    if (!['provisioned', 'updated', 'unchanged'].includes(analystProfile.outcome)) {
+      throw new Error(`review-analyst-profile-${analystProfile.outcome}`);
     }
 
     const academy = await this.ensureAcademy();

@@ -1,8 +1,8 @@
 import { loadPublicEnvironment, type FrontendPublicConfiguration } from '../config/public-environment';
-import type { CreateDraftInput, CreateRepresentationConfirmationInput, EditableDraftResponse, EditDraftInput, InternalPassportHistoryResponse, PassportApiResult, PassportHistoryResponse, PassportListContext, PassportListResponse, PassportPresentationResponse, PassportStatusResponse, RepresentationConfirmationResponse, ResolveDuplicateInput, ReturnInput, VersionInput } from './passport-types';
+import type { AnalystPassportPage, CreateDraftInput, CreateRepresentationConfirmationInput, EditableDraftResponse, EditDraftInput, InternalPassportHistoryResponse, PassportApiResult, PassportHistoryResponse, PassportListContext, PassportListResponse, PassportPresentationResponse, PassportStatusResponse, RepresentationConfirmationResponse, ResolveDuplicateInput, ReturnInput, VersionInput } from './passport-types';
 
 export const PASSPORT_OPERATION_PATHS = Object.freeze({
-  representationConfirmation: '/passport-representation-confirmations', list: '/passports', createDraft: '/passports/drafts', status: '/passports/:passportId', presentation: '/passports/:passportId/presentation', editableDraft: '/passports/:passportId/draft', editDraft: '/passports/:passportId/draft', submit: '/passports/:passportId/submit', returnForCorrection: '/passports/:passportId/return', resolveDuplicate: '/passports/:passportId/possible-duplicate/resolve', approve: '/passports/:passportId/approve', activate: '/passports/:passportId/activate', history: '/passports/:passportId/history', internalHistory: '/passports/:passportId/internal-history',
+  representationConfirmation: '/passport-representation-confirmations', list: '/passports', analystList: '/analyst/passports', createDraft: '/passports/drafts', status: '/passports/:passportId', presentation: '/passports/:passportId/presentation', editableDraft: '/passports/:passportId/draft', editDraft: '/passports/:passportId/draft', submit: '/passports/:passportId/submit', returnForCorrection: '/passports/:passportId/return', resolveDuplicate: '/passports/:passportId/possible-duplicate/resolve', approve: '/passports/:passportId/approve', activate: '/passports/:passportId/activate', history: '/passports/:passportId/history', internalHistory: '/passports/:passportId/internal-history',
 });
 
 type ApiConfiguration = Readonly<{ apiBaseUrl: string }>;
@@ -13,6 +13,7 @@ export type PassportListRequest = Readonly<{ context: PassportListContext; acade
 export type PassportApi = Readonly<{
   createRepresentationConfirmation: (input: CreateRepresentationConfirmationInput, token: string) => Promise<PassportApiResult<RepresentationConfirmationResponse>>;
   list: (request: PassportListRequest, token: string) => Promise<PassportApiResult<PassportListResponse>>;
+  listAnalystPassports: (request: Readonly<{ cursor?: string; limit?: number }>, token: string) => Promise<PassportApiResult<AnalystPassportPage>>;
   createDraft: (input: CreateDraftInput, token: string) => Promise<PassportApiResult<PassportStatusResponse>>;
   status: (passportId: string, token: string) => Promise<PassportApiResult<PassportStatusResponse>>;
   presentation: (passportId: string, token: string) => Promise<PassportApiResult<PassportPresentationResponse>>;
@@ -34,10 +35,28 @@ function configuredBaseUrl(configuration?: ApiConfiguration): string | null {
 }
 function path(template: string, passportId: string): string { return template.replace(':passportId', encodeURIComponent(passportId)); }
 function object<T>(value: unknown): T | null { return value && typeof value === 'object' && !Array.isArray(value) ? value as T : null; }
+function analystPage(value: unknown): AnalystPassportPage | null {
+  const envelope = object<{ data?: unknown; pagination?: unknown }>(value);
+  const pagination = object<{ hasMore?: unknown; nextCursor?: unknown }>(envelope?.pagination);
+  if (!envelope || !Array.isArray(envelope.data) || !pagination || typeof pagination.hasMore !== 'boolean') return null;
+  const items = envelope.data.flatMap((entry) => {
+    const item = object<Record<string, unknown>>(entry);
+    return item && typeof item.passportId === 'string' && typeof item.displayLabel === 'string' && item.lifecycleState === 'ACTIVE'
+      ? [{ passportId: item.passportId, displayLabel: item.displayLabel, lifecycleState: 'ACTIVE' as const, ...(typeof item.academyLabel === 'string' ? { academyLabel: item.academyLabel } : {}) }]
+      : [];
+  });
+  if (items.length !== envelope.data.length) return null;
+  return { items, pagination: { hasMore: pagination.hasMore, ...(typeof pagination.nextCursor === 'string' ? { nextCursor: pagination.nextCursor } : {}) } };
+}
 function listPath(request: PassportListRequest): string {
   const query = new URLSearchParams({ context: request.context });
   if (request.context === 'ACADEMY' && request.academyId) query.set('academyId', request.academyId);
   return `${PASSPORT_OPERATION_PATHS.list}?${query.toString()}`;
+}
+function analystListPath(request: Readonly<{ cursor?: string; limit?: number }>): string {
+  const query = new URLSearchParams({ limit: String(request.limit ?? 20) });
+  if (request.cursor) query.set('cursor', request.cursor);
+  return `${PASSPORT_OPERATION_PATHS.analystList}?${query.toString()}`;
 }
 async function classify<T>(response: Response, parse: (value: unknown) => T | null): Promise<PassportApiResult<T>> {
   if (response.ok) {
@@ -74,6 +93,7 @@ export function createPassportApi(configuration?: ApiConfiguration, fetcher: Fet
   return Object.freeze({
     createRepresentationConfirmation: (input, token) => request<RepresentationConfirmationResponse>(PASSPORT_OPERATION_PATHS.representationConfirmation, 'POST', input, token, object),
     list: (listRequest, token) => request<PassportListResponse>(listPath(listRequest), 'GET', undefined, token, object),
+    listAnalystPassports: (listRequest, token) => request<AnalystPassportPage>(analystListPath(listRequest), 'GET', undefined, token, analystPage),
     createDraft: (input, token) => request<PassportStatusResponse>(PASSPORT_OPERATION_PATHS.createDraft, 'POST', input, token, object),
     status: (id, token) => statusMutation(PASSPORT_OPERATION_PATHS.status, id, 'GET', undefined, token),
     presentation: (id, token) => request<PassportPresentationResponse>(path(PASSPORT_OPERATION_PATHS.presentation, id), 'GET', undefined, token, object),

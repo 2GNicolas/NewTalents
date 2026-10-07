@@ -15,7 +15,10 @@ function dependencies() {
   const lifecycle = { update: vi.fn().mockResolvedValue({ outcome: 'applied', snapshot: { id: requestId } }), submit: vi.fn().mockResolvedValue({ outcome: 'applied', snapshot: { id: requestId } }), resubmit: vi.fn().mockResolvedValue({ outcome: 'applied', snapshot: { id: requestId } }) };
   const history = { applicantHistory: vi.fn().mockResolvedValue([]) };
   const ingestion = { ingest: vi.fn().mockResolvedValue({ outcome: 'clean', projection: { status: 'CLEAN', sizeBytes: 10, declaredMime: 'application/pdf', detectedMime: 'application/pdf' }, internal: { objectKey: 'evidence/0123456789abcdef0123456789abcdef', contentDigest: 'digest' } }) };
-  const deletion = { replaceCorrectedEvidence: vi.fn().mockResolvedValue({ outcome: 'replaced', evidenceId: 'replacement-1' }) };
+  const deletion = {
+    replaceCorrectedEvidence: vi.fn().mockResolvedValue({ outcome: 'replaced', evidenceId: 'replacement-1' }),
+    replaceUncertainEvidence: vi.fn().mockResolvedValue({ outcome: 'replaced', evidenceId: 'retry-clean-1' }),
+  };
   return { typed, repository, prisma, authorization, lifecycle, history, ingestion, deletion };
 }
 
@@ -102,6 +105,20 @@ describe('ApplicantRequestService', () => {
       outcome: 'created', evidence: { id: 'existing', category: 'IDENTITY_FRONT', status: 'CLEAN', sizeBytes: 10 },
     });
     expect(deps.ingestion.ingest).not.toHaveBeenCalled();
+    expect(deps.prisma.registrationEvidenceItem.create).not.toHaveBeenCalled();
+  });
+
+  it('retires prior scanner-unavailable evidence when the same draft category retries cleanly', async () => {
+    const deps = dependencies();
+    deps.prisma.registrationEvidenceItem.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'quarantined-1' });
+    const service = new ApplicantRequestService(deps.typed as never, deps.repository as never, deps.prisma as never, deps.authorization as never, deps.lifecycle as never, deps.history as never, deps.ingestion as never, deps.deletion as never);
+
+    await expect(service.uploadEvidence(identityId, requestId, { expectedVersion: 0, category: 'IDENTITY_FRONT', fileName: 'retry.pdf', declaredMime: 'application/pdf', body: Readable.from('%PDF-retry') })).resolves.toEqual({
+      outcome: 'created', evidence: { id: 'retry-clean-1', category: 'IDENTITY_FRONT', status: 'CLEAN', sizeBytes: 10 },
+    });
+    expect(deps.deletion.replaceUncertainEvidence).toHaveBeenCalledWith(expect.objectContaining({ actorIdentityId: identityId, requestId, expectedVersion: 0, category: 'IDENTITY_FRONT' }));
     expect(deps.prisma.registrationEvidenceItem.create).not.toHaveBeenCalled();
   });
 
