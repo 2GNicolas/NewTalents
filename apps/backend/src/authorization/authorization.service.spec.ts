@@ -47,6 +47,7 @@ describe('AuthorizationService', () => {
     })).allowed).toBe(false);
     expect(service.evaluate(request({
       permission: 'passport.review',
+      resource: { classification: 'protected', analystCustodyActive: false },
       subject: subject('USER'),
     })).allowed).toBe(false);
     expect(service.evaluate(request({

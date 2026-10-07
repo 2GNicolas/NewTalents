@@ -57,11 +57,21 @@ describe('registration request create DTO routing', () => {
     const api = createRegistrationRequestApi({ apiBaseUrl: 'https://api.example.test/api/', getAccessToken: () => 'opaque-token' }, fetcher);
     await api.requestAdminCorrection?.(snapshot.id, { expectedVersion: 4, idempotencyKey: '44444444-4444-4444-8444-444444444444', safeReason: 'Corrige el documento.', correctionTargets: ['IDENTITY_FRONT'] });
     await api.rejectAdmin?.(snapshot.id, { expectedVersion: 4, idempotencyKey: '55555555-5555-4555-8555-555555555555', safeReason: 'No cumple los requisitos.' });
-    await api.approveAdmin?.(snapshot.id, { expectedVersion: 4, idempotencyKey: '66666666-6666-4666-8666-666666666666', manualDossierConfirmation: { confirmed: true, declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } });
+    await api.approveAdmin?.(snapshot.id, { expectedVersion: 4, idempotencyKey: '66666666-6666-4666-8666-666666666666', manualDossierConfirmation: { confirmed: true, dossierName: 'exp-prueba-001', declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } });
+    const approvalCall = fetcher.mock.calls.find(([url]) => String(url).endsWith('/approve'));
+    expect(JSON.parse(String(approvalCall?.[1]?.body))).toMatchObject({ manualDossierConfirmation: { dossierName: 'exp-prueba-001' } });
     await expect(api.retryAdminDeletion?.(snapshot.id, { expectedVersion: 5, idempotencyKey: '77777777-7777-4777-8777-777777777777' })).resolves.toEqual({ kind: 'success', value: { outcome: 'scheduled', requestId: snapshot.id, requestStatus: 'SUBMITTED' } });
     expect(fetcher.mock.calls.map(([url]) => String(url))).toEqual(expect.arrayContaining([
       expect.stringContaining('/correction'), expect.stringContaining('/reject'), expect.stringContaining('/approve'), expect.stringContaining('/deletion/retry'),
     ]));
     expect(fetcher).toHaveBeenLastCalledWith(expect.stringContaining('/deletion/retry'), expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer opaque-token' }) }));
+  });
+
+  it('projects the existing approved passport id for custody navigation', async () => {
+    const passportId = '70000000-0000-4000-8000-000000000004';
+    const fetcher = jest.fn().mockResolvedValue(new Response(JSON.stringify({ data: { outcome: 'approved', requestId: snapshot.id, requestStatus: 'APPROVED', result: { passport: { id: passportId, state: 'ACTIVE', enrichmentStatus: 'AWAITING_ANALYST_ENRICHMENT' } } } }), { status: 200 }));
+    const api = createRegistrationRequestApi({ apiBaseUrl: 'https://api.example.test/api/' }, fetcher);
+
+    await expect(api.approveAdmin?.(snapshot.id, { expectedVersion: 4, idempotencyKey: '66666666-6666-4666-8666-666666666666', manualDossierConfirmation: { confirmed: true, dossierName: 'exp-prueba-001', declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toEqual({ kind: 'success', value: { outcome: 'approved', requestId: snapshot.id, requestStatus: 'APPROVED', passportId } });
   });
 });

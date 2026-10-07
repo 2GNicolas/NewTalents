@@ -23,4 +23,12 @@ describe('AdminDossierApproval', () => {
     expect(screen.getByText('Error')).toBeTruthy();
     expect(screen.getByText('Pendiente')).toBeTruthy();
   });
+
+  it('links an approved request to the existing passport custody workspace', async () => {
+    const onOpenCustody = jest.fn();
+    const screen = await render(<AdminDossierApproval evidenceCategories={['IDENTITY_FRONT']} state="approved" onBack={jest.fn()} onApprove={jest.fn()} onRetryDeletion={jest.fn()} onOpenCustody={onOpenCustody} />);
+
+    await fireEvent.press(screen.getByRole('link', { name: 'Abrir pasaporte en Custodia' }));
+    expect(onOpenCustody).toHaveBeenCalledTimes(1);
+  });
 });

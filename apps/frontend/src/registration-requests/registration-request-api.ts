@@ -73,6 +73,7 @@ export type AdminOperationResult = Readonly<{
   outcome: 'applied' | 'idempotent' | 'pending-deletion' | 'recovery-required' | 'recoverable-failure' | 'approved' | 'scheduled';
   requestId?: string;
   requestStatus?: RegistrationRequestStatus;
+  passportId?: string;
 }>;
 
 export type RegistrationApiResult<T> =
@@ -98,7 +99,7 @@ export type RegistrationRequestApi = Readonly<{
   readAdmin: (requestId: string) => Promise<RegistrationApiResult<AdminRegistrationReview>>;
   requestAdminCorrection?: (requestId: string, command: Readonly<{ expectedVersion: number; idempotencyKey: string; safeReason: string; correctionTargets: readonly string[] }>) => Promise<RegistrationApiResult<AdminOperationResult>>;
   rejectAdmin?: (requestId: string, command: Readonly<{ expectedVersion: number; idempotencyKey: string; safeReason: string }>) => Promise<RegistrationApiResult<AdminOperationResult>>;
-  approveAdmin?: (requestId: string, command: Readonly<{ expectedVersion: number; idempotencyKey: string; manualDossierConfirmation: Readonly<{ confirmed: true; declarationVersion: string; categories: readonly string[] }> }>) => Promise<RegistrationApiResult<AdminOperationResult>>;
+  approveAdmin?: (requestId: string, command: Readonly<{ expectedVersion: number; idempotencyKey: string; manualDossierConfirmation: Readonly<{ confirmed: true; dossierName: string; declarationVersion: string; categories: readonly string[] }> }>) => Promise<RegistrationApiResult<AdminOperationResult>>;
   retryAdminDeletion?: (requestId: string, command: Readonly<{ expectedVersion: number; idempotencyKey: string }>) => Promise<RegistrationApiResult<AdminOperationResult>>;
   openAdminEvidence?: (requestId: string, evidenceId: string) => Promise<RegistrationApiResult<Blob>>;
 }>;
@@ -320,7 +321,9 @@ async function classifyAdminOperation(response: Response): Promise<RegistrationA
     const value = envelope.data as Record<string, unknown>;
     const outcomes = ['applied', 'idempotent', 'pending-deletion', 'recovery-required', 'recoverable-failure', 'approved', 'scheduled'];
     if (!outcomes.includes(String(value.outcome))) return { kind: 'invalid-response' };
-    return { kind: 'success', value: Object.freeze({ outcome: value.outcome as AdminOperationResult['outcome'], ...(typeof value.requestId === 'string' ? { requestId: value.requestId } : {}), ...(isOneOf(value.requestStatus, REGISTRATION_REQUEST_STATUSES) ? { requestStatus: value.requestStatus } : {}) }) };
+    const result = value.result && typeof value.result === 'object' ? value.result as Record<string, unknown> : undefined;
+    const passport = result?.passport && typeof result.passport === 'object' ? result.passport as Record<string, unknown> : undefined;
+    return { kind: 'success', value: Object.freeze({ outcome: value.outcome as AdminOperationResult['outcome'], ...(typeof value.requestId === 'string' ? { requestId: value.requestId } : {}), ...(isOneOf(value.requestStatus, REGISTRATION_REQUEST_STATUSES) ? { requestStatus: value.requestStatus } : {}), ...(typeof passport?.id === 'string' ? { passportId: passport.id } : {}) }) };
   } catch { return { kind: 'invalid-response' }; }
 }
 

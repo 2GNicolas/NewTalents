@@ -23,6 +23,8 @@ export class AuthorizationService {
     if (request.subject.status !== 'ACTIVE') return deny('inactive-identity');
     if (request.resource.classification === 'sensitive') return deny('sensitive-data-restriction');
     if (!request.subject.roles.some((assignment) => assignment.active && (rule.roles as readonly string[]).includes(assignment.role))) return deny('no-active-role');
+    const resourcePolicy = 'resourcePolicy' in rule ? rule.resourcePolicy : undefined;
+    if (resourcePolicy) return this.evaluateResourcePolicy(request, resourcePolicy);
     if (rule.academy) {
       const membership = request.subject.academyMembership;
       if (!membership || !request.resource.academyId || !membership.active || membership.academyId !== request.resource.academyId) return deny('inactive-academy-membership');
@@ -72,6 +74,9 @@ export class AuthorizationService {
     }
 
     if (resource.administratorCapability !== true) return deny('insufficient-resource-facts');
+    if (policy === 'admin-progress') return resource.requestVersionCurrent === true ? allow() : deny('insufficient-resource-facts');
+    if (policy === 'admin-dossier-list') return allow();
+    if (policy === 'admin-dossier-view') return resource.dossierConfirmed === true ? allow() : deny('insufficient-resource-facts');
     if (policy === 'admin-view') return allow();
     if (policy === 'admin-retry-deletion') return resource.deletionState === 'RECOVERY_REQUIRED' ? allow() : deny('insufficient-resource-facts');
     if (resource.requestStatus !== 'SUBMITTED' || resource.requestVersionCurrent !== true) return deny('insufficient-resource-facts');
@@ -81,6 +86,30 @@ export class AuthorizationService {
       return resource.manualDossierConfirmed === true && resource.deletionState === 'COMPLETED' && resource.duplicateConflictAbsent === true && resource.ageRouteCompatible === true && resource.representationComplete === true ? allow() : deny('insufficient-resource-facts');
     }
     return allow();
+  }
+
+  private evaluateResourcePolicy(request: AuthorizationRequest, policy: string): AuthorizationDecision {
+    const { resource, subject } = request;
+    if (policy === 'analyst-current-custody') {
+      return resource.analystCustodyActive === true ? allow() : deny('insufficient-resource-facts');
+    }
+    if (policy === 'administrator-or-analyst-custody') {
+      const administrator = subject.kind === 'authenticated'
+        && subject.roles.some((assignment) => assignment.active && assignment.role === 'ADMINISTRATOR');
+      return administrator || resource.analystCustodyActive === true ? allow() : deny('insufficient-resource-facts');
+    }
+    if (resource.administratorCapability !== true) return deny('insufficient-resource-facts');
+    if (policy === 'admin-custody-list' || policy === 'admin-custody-list-analysts') return allow();
+    if (policy === 'admin-custody-view') return resource.passportBasicActive === true ? allow() : deny('insufficient-resource-facts');
+    if (resource.passportBasicActive !== true || resource.custodyVersionCurrent !== true) return deny('insufficient-resource-facts');
+    if (policy === 'admin-custody-assign') {
+      return resource.custodyAssigned === false && resource.targetAnalystEligible === true ? allow() : deny('insufficient-resource-facts');
+    }
+    if (policy === 'admin-custody-change') {
+      return resource.custodyAssigned === true && resource.targetAnalystEligible === true ? allow() : deny('insufficient-resource-facts');
+    }
+    if (policy === 'admin-custody-remove') return resource.custodyAssigned === true ? allow() : deny('insufficient-resource-facts');
+    return deny('insufficient-resource-facts');
   }
 
   private valid(request: unknown): request is AuthorizationRequest {

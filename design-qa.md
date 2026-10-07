@@ -93,6 +93,24 @@ final result: passed
 
 ---
 
+# Design QA — Feature 007 Administrator home
+
+## Evidence
+
+- Sources: `docs/design/admin-custody/administrator-home-desktop.png` and `administrator-home-mobile.png`.
+- Runtime: `.runtime/feature-007-visual/home/desktop.png` at 1440x1024 and `.runtime/feature-007-visual/home/mobile.png` at 390x844.
+- Route: direct `/admin` inside the existing Administrator shell.
+
+## Result
+
+PASS. Desktop and mobile preserve the approved emerald shell, four-card hierarchy, desktop rail/mobile bottom navigation, Analyst workload, priority actions, typography, glass surfaces, and lime/orange/green status treatment. The 390px runtime document equals the viewport width and has no horizontal overflow; mobile content remains scrollable above the fixed bottom navigation.
+
+The implementation deliberately labels the second card `Expedientes confirmados` and offers consultation only. Counts and workloads come from existing authorized Feature 007 projections; no backend endpoint, mutation, invented production metric, or Feature 006 rule was added. Named semantic actions, text/icon cues beyond color, 44px-or-larger controls, recoverable states, and motion-independent content satisfy the focused accessibility gate.
+
+final result: passed
+
+---
+
 # Visual QA — Feature 006, hallazgos de revisión manual
 
 Fecha: 2026-09-29. Alcance exclusivo: fondo de entrada/formularios, selectores compartidos, alineación de campos, conflicto exacto de documento y salida del estado de solicitud. No se ejecutó Converge ni se revalidaron flujos no relacionados.
@@ -218,5 +236,49 @@ The status screen preserves the approved full-width emerald/liquid-glass hierarc
 Accessibility: semantic labeled buttons, assertive/polite live regions, visible keyboard-focus borders in normal mode, 46–50 px minimum mobile controls, warning communicated with icon/text/border as well as color, and no motion/transition in the status flow. The development preview is deliberately disabled and mutation-free; the authenticated normal route alone owns restore, upload, resubmit and capability refresh.
 
 No P0/P1/P2 findings remain. P3 differences are limited to local system-font metrics, simplified line-glyph rendering, and background crop variation from the shared approved asset.
+
+final result: passed
+
+---
+
+# Design QA — Feature 007 Administrator passport detail
+
+## Evidence
+
+- Source: `docs/design/admin-custody/administrator-passport-detail-desktop.png`
+- Source: `docs/design/admin-custody/administrator-passport-detail-mobile.png`
+- Runtime: `.runtime/feature-007-visual/passport-detail/desktop.png`
+- Runtime: `.runtime/feature-007-visual/passport-detail/mobile.png`
+- Combined comparisons: `.runtime/feature-007-visual/passport-detail/*-comparison.png`
+
+## Checklist
+
+- [x] Desktop and mobile hierarchy follows the approved custody-detail direction.
+- [x] Emerald background, translucent dark panels, restrained lime, and shared shell are preserved.
+- [x] Mobile content is readable without horizontal scrolling or overlapping sections.
+- [x] Interactive controls meet the 44px minimum and expose accessible names.
+- [x] Heading focus, invalid-reason focus, Escape/cancel, and focus return were exercised.
+- [x] Reduced motion does not remove any required information or interaction.
+- [x] Protected identity, evidence, contact, credential, and object-storage fields are structurally absent.
+
+## Disposition
+
+PASS with documented contract-driven deviations. The reference contains richer profile/location content than the closed Feature 007 response permits; the implementation keeps the approved visual language while displaying only authorized minimum projections.
+
+---
+
+# Design QA — Feature 007 confirmed dossiers
+
+## Evidence
+
+- Sources: `docs/design/admin-custody/dossiers-list-desktop.png`, `dossiers-list-mobile.png`, `dossier-detail-desktop.png`, and `dossier-detail-mobile.png`
+- Runtime: `.runtime/feature-007-visual/dossiers/{desktop-list,mobile-list,desktop-detail,mobile-detail}.png`
+- Verification record: `specs/007-administrator-requests-passport-custody/verification/dossiers-visual.md`
+
+## Result
+
+PASS. The list/detail hierarchy, shared shell, responsive cards, linked-record treatment, history presentation, touch targets, focus behavior, and emerald/lime visual direction match the approved references. No P0/P1/P2 issues remain after correcting the mobile detail hero wrapping and direct-entry back fallback.
+
+The omitted pending-confirm rows, mutation controls, and evidence panel are required contract deviations: US8 is confirmed-record consultation only and exposes privacy-minimal projections. P3 differences are limited to local font/glyph metrics, synthetic row density, and background crop.
 
 final result: passed

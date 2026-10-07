@@ -7,27 +7,31 @@ import { SessionControls } from '../../../src/authentication/components/session-
 import { PASSPORT_NOTICE_MESSAGES, usePassportState } from '../../../src/passport/passport-state';
 import { LIFECYCLE_STATE_LABELS, type PassportListContext } from '../../../src/passport/passport-types';
 import { passportTheme } from '../../../src/passport/presentation/passport-theme';
+import { useAuthentication } from '../../../src/authentication/authentication-provider';
+import { usesAnalystCustodyCollection } from '../../../src/authentication/authenticated-route-policy';
 
 export default function PassportEntryRoute() {
   const router = useRouter();
   const params = useLocalSearchParams<{ context?: string; academyId?: string }>();
   const passport = usePassportState();
+  const authentication = useAuthentication();
+  const analystCustody = usesAnalystCustodyCollection(authentication.sessionAccess);
   const redirected = useRef(false);
   const requested = useMemo(() => {
     const context: PassportListContext = params.context === 'ACADEMY' ? 'ACADEMY' : 'PARTICULAR';
     return context === 'ACADEMY' ? { context, academyId: params.academyId } as const : { context } as const;
   }, [params.academyId, params.context]);
-  useEffect(() => { redirected.current = false; void passport.loadList(requested); }, [passport.loadList, requested]);
+  useEffect(() => { redirected.current = false; if (analystCustody) void passport.loadAnalystPassports(); else void passport.loadList(requested); }, [analystCustody, passport.loadAnalystPassports, passport.loadList, requested]);
   const ready = passport.state.phase === 'ready' && passport.state.list !== null && passport.state.context === requested.context;
   useEffect(() => {
-    if (!ready || redirected.current || requested.context !== 'PARTICULAR' || passport.state.list?.length !== 1) return;
+    if (!ready || analystCustody || redirected.current || requested.context !== 'PARTICULAR' || passport.state.list?.length !== 1) return;
     redirected.current = true;
     router.replace(`/passports/${passport.state.list[0]!.passportId}/sections/resumen` as never);
-  }, [passport.state.list, ready, requested.context, router]);
+  }, [analystCustody, passport.state.list, ready, requested.context, router]);
   if (!ready && (passport.state.phase === 'idle' || passport.state.phase === 'loading')) return <AuthLoading label="Cargando pasaportes" />;
   const list = passport.state.list ?? [];
   const academyName = list.find(item => item.academyOriginName)?.academyOriginName ?? 'academia';
-  const title = requested.context === 'ACADEMY' ? `Cartera de ${academyName}` : list.length > 1 ? 'Selecciona un jugador' : 'Tus pasaportes';
+  const title = analystCustody ? 'Pasaportes en custodia' : requested.context === 'ACADEMY' ? `Cartera de ${academyName}` : list.length > 1 ? 'Selecciona un jugador' : 'Tus pasaportes';
   const createActions = passport.state.collectionActions ?? [];
   return <View style={styles.screen}>
     <Text accessibilityRole="header" style={styles.title}>{title}</Text>
@@ -38,7 +42,7 @@ export default function PassportEntryRoute() {
       {createActions.includes('CREATE_ACADEMY') && requested.context === 'ACADEMY' ? <AuthButton label="Crear en academia" onPress={() => router.push(`/passports/new?managementContext=ACADEMY&academyId=${encodeURIComponent(requested.academyId ?? '')}` as never)} /> : null}
     </View>
     {list.length === 0 ? <LiquidGlassPanel style={styles.empty}><Text style={styles.secondary}>No hay pasaportes accesibles en este contexto.</Text></LiquidGlassPanel> : null}
-    {list.length > 0 && !(requested.context === 'PARTICULAR' && list.length === 1) ? <View style={styles.list}>{list.map(item => <Pressable key={item.passportId} accessibilityRole="button" accessibilityLabel={`Abrir pasaporte de ${item.displayName}`} onPress={() => router.push(`/passports/${item.passportId}/sections/resumen` as never)} style={styles.row}>
+    {list.length > 0 && (analystCustody || !(requested.context === 'PARTICULAR' && list.length === 1)) ? <View style={styles.list}>{list.map(item => <Pressable key={item.passportId} accessibilityRole="button" accessibilityLabel={`Abrir pasaporte de ${item.displayName}`} onPress={() => router.push(`/passports/${item.passportId}/sections/resumen` as never)} style={styles.row}>
       <Text style={styles.name}>{item.displayName}</Text><Text style={styles.state}>{LIFECYCLE_STATE_LABELS[item.lifecycleState]}</Text>{item.academyOriginName ? <Text style={styles.secondary}>{item.academyOriginName}</Text> : null}
     </Pressable>)}</View> : null}
     <SessionControls />

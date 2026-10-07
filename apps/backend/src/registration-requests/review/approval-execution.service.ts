@@ -15,7 +15,7 @@ import { AcademyMinorPlayerApprovalOrchestrator } from '../outcomes/academy-mino
 type ApprovalInput = Readonly<{
   expectedVersion: number;
   idempotencyKey: string;
-  manualDossierConfirmation: Readonly<{ confirmed: boolean; declarationVersion: string; categories: readonly RegistrationEvidenceCategory[] }>;
+  manualDossierConfirmation: Readonly<{ confirmed: boolean; dossierName: string; declarationVersion: string; categories: readonly RegistrationEvidenceCategory[] }>;
 }>;
 
 @Injectable()
@@ -54,7 +54,7 @@ export class ApprovalExecutionService {
       if (current.version !== input.expectedVersion || current.approvalExecutionStatus !== 'NONE') return { outcome: 'stale' as const };
       if (!current.evidenceItems.length || current.evidenceItems.some(({ status }) => status !== 'CLEAN') || current.duplicateSignals.some(({ status }) => status === 'OPEN' || status === 'CONFIRMED_CONFLICT')) return { outcome: 'invalid' as const, code: 'REQUEST_NOT_APPROVABLE' };
       const nextVersion = current.version + 1;
-      await tx.registrationManualDossierConfirmation.create({ data: { requestId, requestVersion: nextVersion, administratorIdentityId: identityId, transferredCategories: [...input.manualDossierConfirmation.categories], declarationVersion: input.manualDossierConfirmation.declarationVersion } });
+      await tx.registrationManualDossierConfirmation.create({ data: { requestId, requestVersion: nextVersion, administratorIdentityId: identityId, dossierName: input.manualDossierConfirmation.dossierName.trim(), transferredCategories: [...input.manualDossierConfirmation.categories], declarationVersion: input.manualDossierConfirmation.declarationVersion } });
       const execution = await tx.registrationApprovalExecution.create({ data: { requestId, requestVersion: nextVersion, status: 'DELETING_EVIDENCE', idempotencyKey: input.idempotencyKey }, select: { id: true } });
       for (const evidence of current.evidenceItems) {
         await tx.registrationEvidenceItem.update({ where: { id: evidence.id }, data: { status: 'DELETION_PENDING' } });
@@ -136,6 +136,7 @@ export class ApprovalExecutionService {
 
   private validateDossier(value: ApprovalInput['manualDossierConfirmation']) {
     if (value.confirmed !== true) return 'DOSSIER_CONFIRMATION_REQUIRED' as const;
+    if (typeof value.dossierName !== 'string' || !value.dossierName.trim() || value.dossierName.trim().length > 180) return 'DOSSIER_NAME_INVALID' as const;
     if (!value.declarationVersion.trim() || value.declarationVersion.length > 40) return 'DOSSIER_DECLARATION_INVALID' as const;
     if (value.categories.length === 0) return 'DOSSIER_CATEGORIES_REQUIRED' as const;
     if (new Set(value.categories).size !== value.categories.length) return 'DOSSIER_CATEGORIES_INVALID' as const;

@@ -26,6 +26,8 @@ describe('AdminRequestReview', () => {
     expect(screen.getByRole('button', { name: 'Rechazar' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Continuar revisión' })).toBeTruthy();
     expect(screen.queryByText(/candidate|fingerprint|clave de objeto/i)).toBeNull();
+    expect(screen.queryByText('Historial')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).toBeNull();
   });
 
   it('blocks continuation from a stale projection', async () => {

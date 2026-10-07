@@ -8,6 +8,8 @@ import { BACKEND_RUNTIME_CONFIGURATION } from '../config/config.module.js';
 import type { BackendRuntimeConfiguration } from '../config/environment.schema.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { PlayerPassportModule } from '../player-passport/player-passport.module.js';
+import { PASSPORT_KEY_MATERIAL } from '../player-passport/passport-key.token.js';
+import type { PassportKeyMaterial } from '../player-passport/player-private-identity/passport-keys.js';
 import { RegistrationAuthorizationAdapter } from './authorization/registration-authorization.adapter.js';
 import { ApplicantRequestService, REGISTRATION_TYPED_REQUEST_APPLICATION } from './application/applicant-request.service.js';
 import { ClamAvInstreamScanner } from './evidence/clamav-instream-scanner.js';
@@ -21,11 +23,18 @@ import { PRIVATE_EVIDENCE_STORE, type PrivateEvidenceStore } from './evidence/pr
 import { S3PrivateEvidenceStore } from './evidence/s3-private-evidence-store.js';
 import { RegistrationRequestHistoryService } from './history/registration-request-history.service.js';
 import { AdminRegistrationReviewController } from './http/admin-registration-review.controller.js';
+import { AdminRegistrationOperationsController } from './http/admin-registration-operations.controller.js';
+import { AdminDossierController, AdminDossierExceptionFilter } from './http/admin-dossier.controller.js';
 import { RegistrationRequestController } from './http/registration-request.controller.js';
 import { RegistrationRequestExceptionFilter } from './http/registration-request-exception.filter.js';
 import { RegistrationRequestLifecycleService } from './lifecycle/registration-request-lifecycle.service.js';
 import { RegistrationRequestRepository } from './persistence/registration-request.repository.js';
+import { AdminDossierRepository } from './persistence/admin-dossier.repository.js';
+import { AdminDossierQueryService } from './review/admin-dossier-query.service.js';
+import { decryptPassportValue } from '../player-passport/player-private-identity/passport-crypto.js';
 import { AdminRegistrationQueryService } from './review/admin-registration-query.service.js';
+import { AdminOperationalWorkspaceService } from './review/admin-operational-workspace.service.js';
+import { AdminReviewProgressService } from './review/admin-review-progress.service.js';
 import { AdminRegistrationReviewService } from './review/admin-registration-review.service.js';
 import { AdminRegistrationDecisionService } from './review/admin-registration-decision.service.js';
 import { ApprovalExecutionService } from './review/approval-execution.service.js';
@@ -52,13 +61,22 @@ import { AcademyMinorPlayerApprovalOrchestrator } from './outcomes/academy-minor
 
 @Module({
   imports: [DatabaseModule, AuthorizationModule, AuthenticationModule, PlayerPassportModule],
-  controllers: [RegistrationRequestController, AdminRegistrationReviewController, EvidenceStreamController],
+  controllers: [RegistrationRequestController, AdminRegistrationOperationsController, AdminRegistrationReviewController, AdminDossierController, EvidenceStreamController],
   providers: [
     RegistrationAuthorizationAdapter,
     RegistrationRequestRepository,
+    AdminDossierRepository,
+    {
+      provide: AdminDossierQueryService,
+      inject: [AdminDossierRepository, RegistrationAuthorizationAdapter, PASSPORT_KEY_MATERIAL],
+      useFactory: (repository: AdminDossierRepository, authorization: RegistrationAuthorizationAdapter, keys: PassportKeyMaterial) => new AdminDossierQueryService(repository, authorization, { decrypt: (ciphertext) => decryptPassportValue(keys.privateEncryptionKey, ciphertext) }),
+    },
+    AdminDossierExceptionFilter,
     { provide: RegistrationRequestLifecycleService, inject: [RegistrationRequestRepository], useFactory: (repository: RegistrationRequestRepository) => new RegistrationRequestLifecycleService(repository) },
     RegistrationRequestHistoryService,
     AdminRegistrationQueryService,
+    AdminReviewProgressService,
+    AdminOperationalWorkspaceService,
     AdminRegistrationReviewService,
     AdminRegistrationDecisionService,
     ApprovalExecutionService,
@@ -120,6 +138,6 @@ import { AcademyMinorPlayerApprovalOrchestrator } from './outcomes/academy-minor
     },
     EvidenceDeletionWorker,
   ],
-  exports: [RegistrationAuthorizationAdapter, RegistrationRequestRepository, RegistrationRequestLifecycleService, RegistrationRequestHistoryService, ApplicantRequestService, AdminRegistrationQueryService, AdminRegistrationReviewService, AdminRegistrationDecisionService, ApprovalExecutionService, PrivateDuplicateReviewService, PersonalAdultApplicationService, RepresentedMinorApplicationService, FormalAcademyApplicationService, NaturalPersonAcademyApplicationService, AdditionalAcademyAccountService, AcademyAdultPlayerService, AcademyMinorPlayerService, RegistrationDuplicateService, AcademyDuplicateService, PersonalAdultApprovalOrchestrator, RepresentedMinorApprovalOrchestrator, FormalAcademyApprovalOrchestrator, NaturalPersonAcademyApprovalOrchestrator, AdditionalAcademyAccountApprovalOrchestrator, AcademyAdultPlayerApprovalOrchestrator, AcademyMinorPlayerApprovalOrchestrator, PRIVATE_EVIDENCE_STORE, EvidenceIngestionService, EvidenceDeletionService, EvidenceDeletionWorker],
+  exports: [RegistrationAuthorizationAdapter, RegistrationRequestRepository, RegistrationRequestLifecycleService, RegistrationRequestHistoryService, ApplicantRequestService, AdminRegistrationQueryService, AdminReviewProgressService, AdminOperationalWorkspaceService, AdminRegistrationReviewService, AdminRegistrationDecisionService, ApprovalExecutionService, PrivateDuplicateReviewService, PersonalAdultApplicationService, RepresentedMinorApplicationService, FormalAcademyApplicationService, NaturalPersonAcademyApplicationService, AdditionalAcademyAccountService, AcademyAdultPlayerService, AcademyMinorPlayerService, RegistrationDuplicateService, AcademyDuplicateService, PersonalAdultApprovalOrchestrator, RepresentedMinorApprovalOrchestrator, FormalAcademyApprovalOrchestrator, NaturalPersonAcademyApprovalOrchestrator, AdditionalAcademyAccountApprovalOrchestrator, AcademyAdultPlayerApprovalOrchestrator, AcademyMinorPlayerApprovalOrchestrator, PRIVATE_EVIDENCE_STORE, EvidenceIngestionService, EvidenceDeletionService, EvidenceDeletionWorker],
 })
 export class RegistrationRequestsModule {}

@@ -12,7 +12,7 @@ describe('AdminRegistrationReviewController approval', () => {
     const response = await controller.approve(
       { actor: { identityId: '33333333-3333-4333-8333-333333333333' } } as never,
       '22222222-2222-4222-8222-222222222222',
-      { expectedVersion: 1, idempotencyKey: '44444444-4444-4444-8444-444444444444', manualDossierConfirmation: { confirmed: true, declarationVersion: 'manual-v1', categories: ['IDENTITY_FRONT', 'IDENTITY_BACK'] } },
+      { expectedVersion: 1, idempotencyKey: '44444444-4444-4444-8444-444444444444', manualDossierConfirmation: { confirmed: true, dossierName: 'exp-prueba-001', declarationVersion: 'manual-v1', categories: ['IDENTITY_FRONT', 'IDENTITY_BACK'] } },
     );
 
     expect(approve).toHaveBeenCalledOnce();

@@ -6,12 +6,13 @@ export type SessionAccessProjection = Readonly<{
 }>;
 
 export function projectSessionAccess(identity: Readonly<{
-  roleAssignments: readonly Readonly<{ role?: string }>[];
+  roleAssignments: readonly Readonly<{ role?: string; status?: string }>[];
   memberships?: readonly Readonly<{ academyId: string; status: string }>[];
   registrationApplicantAccesses?: readonly Readonly<{ requestId: string; status: string; request?: Readonly<{ status: string }> }>[];
 }>): SessionAccessProjection {
+  const activeRoleAssignments = identity.roleAssignments.filter((assignment) => assignment.status === undefined || assignment.status === 'ACTIVE');
   const pending = identity.registrationApplicantAccesses?.find((access) => access.status === 'PENDING_ONBOARDING');
-  if (identity.roleAssignments.length === 0 && pending) {
+  if (activeRoleAssignments.length === 0 && pending) {
     const requestStatus = pending.request?.status;
     const editable = requestStatus === 'DRAFT' || requestStatus === 'REQUIRES_CORRECTION';
     const capabilities = [
@@ -22,8 +23,9 @@ export function projectSessionAccess(identity: Readonly<{
     ];
     return Object.freeze({ classification: 'pending-onboarding', requestId: pending.requestId, capabilities: Object.freeze(capabilities) });
   }
-  const academyUser = identity.roleAssignments.some((assignment) => assignment.role === 'ACADEMY_USER');
-  const administrator = identity.roleAssignments.some((assignment) => assignment.role === 'ADMINISTRATOR');
+  const academyUser = activeRoleAssignments.some((assignment) => assignment.role === 'ACADEMY_USER');
+  const administrator = activeRoleAssignments.some((assignment) => assignment.role === 'ADMINISTRATOR');
+  const analyst = activeRoleAssignments.some((assignment) => assignment.role === 'ANALYST');
   const academyId = academyUser ? identity.memberships?.find((membership) => membership.status === 'ACTIVE')?.academyId : undefined;
   const capabilities = [
     ...(academyUser ? [
@@ -32,7 +34,19 @@ export function projectSessionAccess(identity: Readonly<{
       'registration.request.academy.create-adult-player',
       'registration.request.academy.create-minor-player',
     ] : []),
-    ...(administrator ? ['registration.review.list'] : []),
+    ...(administrator ? [
+      'registration.review.list',
+      'registration.review.progress',
+      'registration.dossier.list',
+      'registration.dossier.view',
+      'passport.custody.list',
+      'passport.custody.view',
+      'passport.custody.list-analysts',
+      'passport.custody.assign',
+      'passport.custody.change',
+      'passport.custody.remove',
+    ] : []),
+    ...(analyst ? ['passport.review'] : []),
   ];
   return Object.freeze({
     classification: 'product',

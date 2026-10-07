@@ -25,6 +25,12 @@ export type ResourceFacts = Readonly<{
   manualDossierConfirmed?: boolean;
   deletionState?: RegistrationDeletionState;
   administratorCapability?: boolean;
+  dossierConfirmed?: boolean;
+  passportBasicActive?: boolean;
+  custodyVersionCurrent?: boolean;
+  custodyAssigned?: boolean;
+  targetAnalystEligible?: boolean;
+  analystCustodyActive?: boolean;
 }>;
 type ActiveRole = Readonly<{ role: FunctionalRole; active: boolean }>;
 export type AuthorizationRequest = Readonly<{

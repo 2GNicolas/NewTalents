@@ -6,6 +6,7 @@ import { AuthorizationModule } from '../authorization/authorization.module.js';
 import { BACKEND_RUNTIME_CONFIGURATION } from '../config/config.module.js';
 import type { BackendRuntimeConfiguration } from '../config/environment.schema.js';
 import { DatabaseModule } from '../database/database.module.js';
+import { IdentityModule } from '../identity/identity.module.js';
 import { DuplicateReviewService } from './duplicate-review/duplicate-review.service.js';
 import { PassportAuthorizationAdapter } from './passport-authorization/passport-authorization.adapter.js';
 import { PassportController, PassportRepresentationController } from './http/passport.controller.js';
@@ -24,7 +25,7 @@ import { PlayerPassportService } from './player-passport.service.js';
 import { LocalReviewProvisioningService } from './review-environment/local-review-provisioning.service.js';
 
 @Module({
-  imports: [DatabaseModule, AuthorizationModule, AuthenticationModule, AcademyMembershipModule],
+  imports: [DatabaseModule, AuthorizationModule, AuthenticationModule, AcademyMembershipModule, IdentityModule],
   controllers: [PassportController, PassportRepresentationController],
   providers: [
     {

@@ -17,6 +17,44 @@ export class EvidenceDeletionService {
     private readonly configuration: EvidenceDeletionConfiguration,
   ) {}
 
+  async replaceUncertainEvidence(input: Readonly<{ actorIdentityId: string; requestId: string; expectedVersion: number; category: RegistrationEvidenceCategory; replacement: CleanReplacement }>): Promise<Readonly<{ outcome: 'replaced'; evidenceId: string } | { outcome: 'denied' | 'conflict' }>> {
+    const decision = await this.authorization.authorize({ identityId: input.actorIdentityId, permission: 'registration.request.own.upload-evidence', requestId: input.requestId, expectedVersion: input.expectedVersion });
+    if (!decision.allowed) {
+      await this.store.delete(input.replacement.objectKey).catch(() => undefined);
+      return { outcome: 'denied' };
+    }
+    try {
+      const evidenceId = await this.prisma.$transaction(async (transaction) => {
+        const request = await transaction.registrationRequest.findUnique({ where: { id: input.requestId }, select: { status: true, version: true } });
+        if (!request || request.status !== 'DRAFT' || request.version !== input.expectedVersion) throw new Error('INVALID_UNCERTAIN_REPLACEMENT');
+        const previous = await transaction.registrationEvidenceItem.findMany({
+          where: { requestId: input.requestId, category: input.category, status: { in: ['QUARANTINED', 'SCANNING', 'REJECTED'] }, replacedById: null, deletedAt: null },
+          orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+          select: { id: true },
+        });
+        const replacement = await transaction.registrationEvidenceItem.create({
+          data: { requestId: input.requestId, category: input.category, objectKey: input.replacement.objectKey, declaredMime: input.replacement.declaredMime, detectedMime: input.replacement.detectedMime, sizeBytes: input.replacement.sizeBytes, contentDigest: input.replacement.contentDigest, scannerResultCode: input.replacement.scannerResultCode, status: 'CLEAN' },
+          select: { id: true },
+        });
+        for (let index = 0; index < previous.length; index += 1) {
+          const item = previous[index]!;
+          const replacedById = index === 0 ? replacement.id : previous[index - 1]!.id;
+          await transaction.registrationEvidenceItem.update({ where: { id: item.id }, data: { status: 'REPLACED', replacedById } });
+          await transaction.registrationEvidenceDeletionRecord.upsert({
+            where: { evidenceItemId_requestVersion: { evidenceItemId: item.id, requestVersion: input.expectedVersion } },
+            create: { requestId: input.requestId, requestVersion: input.expectedVersion, evidenceItemId: item.id, status: 'PENDING' },
+            update: {},
+          });
+        }
+        return replacement.id;
+      });
+      return { outcome: 'replaced', evidenceId };
+    } catch {
+      await this.store.delete(input.replacement.objectKey).catch(() => undefined);
+      return { outcome: 'conflict' };
+    }
+  }
+
   async replaceCorrectedEvidence(input: Readonly<{ actorIdentityId: string; requestId: string; expectedVersion: number; category: RegistrationEvidenceCategory; replacement: CleanReplacement }>): Promise<Readonly<{ outcome: 'replaced'; evidenceId: string } | { outcome: 'denied' | 'conflict' }>> {
     const decision = await this.authorization.authorize({ identityId: input.actorIdentityId, permission: 'registration.request.own.upload-evidence', requestId: input.requestId, expectedVersion: input.expectedVersion });
     if (!decision.allowed) {
