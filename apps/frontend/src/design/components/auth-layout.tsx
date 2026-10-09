@@ -23,14 +23,13 @@ type AuthLayoutProps = {
   fixedAction?: ReactNode;
   visual?: ReactNode;
   footer?: ReactNode;
-  formHeader?: ReactNode;
   /** Allows deterministic viewport coverage in component tests; omitted in the application. */
   viewportWidth?: number;
   viewportHeight?: number;
 };
 
 /** Full-viewport authentication split; no floating card or external canvas is rendered. */
-export function AuthLayout({ children, background, fixedAction, visual, footer, formHeader, viewportWidth, viewportHeight }: AuthLayoutProps) {
+export function AuthLayout({ children, background, fixedAction, visual, footer, viewportWidth, viewportHeight }: AuthLayoutProps) {
   const { width, height } = useWindowDimensions();
   const desktop = (viewportWidth ?? width) >= authTokens.breakpoints.desktop;
   const compactHeight = (viewportHeight ?? height) < 680;
@@ -44,7 +43,6 @@ export function AuthLayout({ children, background, fixedAction, visual, footer, 
             {desktop && visual ? <View style={styles.visualColumn} testID="auth-visual-region">{visual}</View> : null}
             {!desktop && visual ? <View style={styles.mobileVisualColumn} testID="auth-mobile-visual-region">{visual}</View> : null}
             <View style={[styles.contentColumn, desktop && styles.contentColumnDesktop, desktop && webPanelDiffusion]} testID="auth-form-region">
-            {formHeader ? <View style={styles.formHeader} testID="auth-form-header">{formHeader}</View> : null}
             <ScrollView
               contentContainerStyle={[styles.scrollContent, compactHeight && styles.scrollContentCompact, !desktop && fixedAction ? styles.scrollContentWithFixedAction : undefined]}
               keyboardShouldPersistTaps="handled"
@@ -72,7 +70,6 @@ const styles = StyleSheet.create({
   pageDesktop: { flexDirection: 'row' },
   contentColumn: { backgroundColor: 'rgba(4, 8, 6, 0.80)', flex: 1, minHeight: authTokens.sizing.loadingBlockHeight },
   contentColumnDesktop: { borderLeftColor: 'rgba(255, 255, 255, 0.06)', borderLeftWidth: 1, flexBasis: '40%', flexGrow: 0, minWidth: 0 },
-  formHeader: { left: authTokens.spacing.xl, position: 'absolute', top: authTokens.spacing.lg, zIndex: 10 },
   visualColumn: { flexBasis: '60%', flexGrow: 0, minWidth: 0 },
   mobileVisualColumn: { flexGrow: 0, height: 310, minHeight: 270 },
   scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: authTokens.spacing.xl, paddingVertical: authTokens.spacing.xxl },

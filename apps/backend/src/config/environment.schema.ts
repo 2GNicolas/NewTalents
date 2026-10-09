@@ -1,7 +1,4 @@
 import { z } from 'zod';
-import { isAbsolute, parse as parsePath } from 'node:path';
-
-import { parsePassportKey } from '../player-passport/player-private-identity/passport-keys.js';
 
 const placeholders = new Set(['__REQUIRED__', 'CHANGE_ME']);
 
@@ -52,83 +49,6 @@ function parseTrustedProxy(value: unknown): boolean {
   throw new Error('Invalid configuration: AUTH_TRUSTED_PROXY');
 }
 
-function parsePositiveInteger(name: string, value: unknown, maximum = Number.MAX_SAFE_INTEGER): number {
-  const raw = required(name, value);
-  if (!/^\d+$/.test(raw)) throw new Error(`Invalid configuration: ${name}`);
-  const parsed = Number(raw);
-  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) throw new Error(`Invalid configuration: ${name}`);
-  return parsed;
-}
-
-const approvedEvidenceMimeTypes = Object.freeze(['application/pdf', 'image/jpeg', 'image/png'] as const);
-
-function parseEvidenceMimeTypes(value: unknown): readonly string[] {
-  const mimeTypes = required('REGISTRATION_EVIDENCE_ALLOWED_MIME_TYPES', value).split(',').map((item) => item.trim()).filter(Boolean);
-  const supplied = new Set(mimeTypes);
-  if (supplied.size !== approvedEvidenceMimeTypes.length || approvedEvidenceMimeTypes.some((mime) => !supplied.has(mime))) {
-    throw new Error('Invalid configuration: REGISTRATION_EVIDENCE_ALLOWED_MIME_TYPES');
-  }
-  return Object.freeze([...approvedEvidenceMimeTypes]);
-}
-
-function parsePrivateRoot(value: unknown): string {
-  const root = required('REGISTRATION_EVIDENCE_PRIVATE_ROOT', value).replaceAll('\\', '/');
-  const filesystemRoot = parsePath(root).root.replaceAll('\\', '/');
-  if (!isAbsolute(root) || root === filesystemRoot || /(^|\/)(public|static|assets)(\/|$)/i.test(root)) {
-    throw new Error('Invalid configuration: REGISTRATION_EVIDENCE_PRIVATE_ROOT');
-  }
-  return root;
-}
-
-function parseRegistrationConfiguration(environment: Record<string, unknown>, nodeEnv: z.infer<typeof nodeEnvironmentSchema>) {
-  const provider = required('REGISTRATION_EVIDENCE_PROVIDER', environment.REGISTRATION_EVIDENCE_PROVIDER);
-  if (provider !== 'local' && provider !== 's3') throw new Error('Invalid configuration: REGISTRATION_EVIDENCE_PROVIDER');
-  if (nodeEnv === 'production' && provider !== 's3') throw new Error('Invalid configuration: REGISTRATION_EVIDENCE_PROVIDER');
-
-  const evidence = provider === 'local'
-    ? Object.freeze({
-        provider: 'local' as const,
-        privateRoot: parsePrivateRoot(environment.REGISTRATION_EVIDENCE_PRIVATE_ROOT),
-        bucket: null,
-        region: null,
-        encryption: null,
-        allowedMimeTypes: parseEvidenceMimeTypes(environment.REGISTRATION_EVIDENCE_ALLOWED_MIME_TYPES),
-        maxItemBytes: parseExactPositiveInteger('REGISTRATION_EVIDENCE_MAX_ITEM_BYTES', environment.REGISTRATION_EVIDENCE_MAX_ITEM_BYTES, 10_485_760),
-        maxRequestBytes: parseExactPositiveInteger('REGISTRATION_EVIDENCE_MAX_REQUEST_BYTES', environment.REGISTRATION_EVIDENCE_MAX_REQUEST_BYTES, 41_943_040),
-      })
-    : Object.freeze({
-        provider: 's3' as const,
-        privateRoot: null,
-        bucket: required('REGISTRATION_EVIDENCE_S3_BUCKET', environment.REGISTRATION_EVIDENCE_S3_BUCKET),
-        region: required('REGISTRATION_EVIDENCE_S3_REGION', environment.REGISTRATION_EVIDENCE_S3_REGION),
-        encryption: (() => {
-          const encryption = required('REGISTRATION_EVIDENCE_S3_ENCRYPTION', environment.REGISTRATION_EVIDENCE_S3_ENCRYPTION);
-          if (encryption !== 'AES256' && encryption !== 'aws:kms') throw new Error('Invalid configuration: REGISTRATION_EVIDENCE_S3_ENCRYPTION');
-          return encryption as 'AES256' | 'aws:kms';
-        })(),
-        allowedMimeTypes: parseEvidenceMimeTypes(environment.REGISTRATION_EVIDENCE_ALLOWED_MIME_TYPES),
-        maxItemBytes: parseExactPositiveInteger('REGISTRATION_EVIDENCE_MAX_ITEM_BYTES', environment.REGISTRATION_EVIDENCE_MAX_ITEM_BYTES, 10_485_760),
-        maxRequestBytes: parseExactPositiveInteger('REGISTRATION_EVIDENCE_MAX_REQUEST_BYTES', environment.REGISTRATION_EVIDENCE_MAX_REQUEST_BYTES, 41_943_040),
-      });
-
-  return Object.freeze({
-    evidence,
-    scanner: Object.freeze({
-      host: required('REGISTRATION_SCANNER_HOST', environment.REGISTRATION_SCANNER_HOST),
-      port: parsePositiveInteger('REGISTRATION_SCANNER_PORT', environment.REGISTRATION_SCANNER_PORT, 65_535),
-      timeoutMs: parsePositiveInteger('REGISTRATION_SCANNER_TIMEOUT_MS', environment.REGISTRATION_SCANNER_TIMEOUT_MS, 60_000),
-    }),
-    pendingSessionTtlSeconds: parseExactPositiveInteger('REGISTRATION_PENDING_SESSION_TTL_SECONDS', environment.REGISTRATION_PENDING_SESSION_TTL_SECONDS, 86_400),
-    deletion: Object.freeze({
-      batchSize: parsePositiveInteger('REGISTRATION_DELETION_BATCH_SIZE', environment.REGISTRATION_DELETION_BATCH_SIZE, 100),
-      leaseSeconds: parsePositiveInteger('REGISTRATION_DELETION_LEASE_SECONDS', environment.REGISTRATION_DELETION_LEASE_SECONDS, 3_600),
-      backoffSeconds: parsePositiveInteger('REGISTRATION_DELETION_BACKOFF_SECONDS', environment.REGISTRATION_DELETION_BACKOFF_SECONDS, 3_600),
-      maxAttempts: parseExactPositiveInteger('REGISTRATION_DELETION_MAX_ATTEMPTS', environment.REGISTRATION_DELETION_MAX_ATTEMPTS, 5),
-      orphanGraceSeconds: parsePositiveInteger('REGISTRATION_ORPHAN_GRACE_SECONDS', environment.REGISTRATION_ORPHAN_GRACE_SECONDS),
-    }),
-  });
-}
-
 export function parseAllowedOrigins(value: unknown): readonly string[] {
   const raw = required('ALLOWED_ORIGINS', value);
   const origins = raw.split(',').map((entry) => entry.trim()).filter(Boolean);
@@ -164,20 +84,6 @@ export type BackendRuntimeConfiguration = Readonly<{
     sessionRetentionDays: number;
     attemptRetentionHours: number;
   }>;
-  passport: Readonly<{
-    documentHmacKey: string;
-    nameDobHmacKey: string;
-    privateEncryptionKey: string;
-  }>;
-  registration: Readonly<{
-    evidence: Readonly<{
-      provider: 'local' | 's3'; privateRoot: string | null; bucket: string | null; region: string | null;
-      encryption: 'AES256' | 'aws:kms' | null; allowedMimeTypes: readonly string[]; maxItemBytes: number; maxRequestBytes: number;
-    }>;
-    scanner: Readonly<{ host: string; port: number; timeoutMs: number }>;
-    pendingSessionTtlSeconds: number;
-    deletion: Readonly<{ batchSize: number; leaseSeconds: number; backoffSeconds: number; maxAttempts: number; orphanGraceSeconds: number }>;
-  }>;
 }>;
 
 export function parseBackendEnvironment(environment: Record<string, unknown>): BackendRuntimeConfiguration {
@@ -197,19 +103,11 @@ export function parseBackendEnvironment(environment: Record<string, unknown>): B
     sessionRetentionDays: parseExactPositiveInteger('AUTH_SESSION_RETENTION_DAYS', environment.AUTH_SESSION_RETENTION_DAYS, 90),
     attemptRetentionHours: parseExactPositiveInteger('AUTH_ATTEMPT_RETENTION_HOURS', environment.AUTH_ATTEMPT_RETENTION_HOURS, 24),
   });
-  const passport = Object.freeze({
-    documentHmacKey: parsePassportKey('PASSPORT_DOCUMENT_HMAC_KEY', environment.PASSPORT_DOCUMENT_HMAC_KEY),
-    nameDobHmacKey: parsePassportKey('PASSPORT_NAME_DOB_HMAC_KEY', environment.PASSPORT_NAME_DOB_HMAC_KEY),
-    privateEncryptionKey: parsePassportKey('PASSPORT_PRIVATE_ENCRYPTION_KEY', environment.PASSPORT_PRIVATE_ENCRYPTION_KEY),
-  });
-  const registration = parseRegistrationConfiguration(environment, parsedNodeEnvironment.data);
   return Object.freeze({
     nodeEnv: parsedNodeEnvironment.data,
     port: parsePort(environment.PORT),
     databaseUrl: parseDatabaseUrl(environment.DATABASE_URL),
     allowedOrigins: parseAllowedOrigins(environment.ALLOWED_ORIGINS),
     authentication,
-    passport,
-    registration,
   });
 }

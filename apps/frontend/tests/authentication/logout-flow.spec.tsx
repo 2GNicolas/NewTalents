@@ -1,7 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
+import AuthenticatedRouteShell from '../../app/(authenticated)/index';
 import { AuthenticationProvider, useAuthentication, type AuthenticationProviderValue } from '../../src/authentication/authentication-provider';
-import { SessionControls } from '../../src/authentication/components/session-controls';
 import type { AuthenticationApi } from '../../src/authentication/authentication-api';
 import { SessionStorage } from '../../src/authentication/session-storage';
 
@@ -13,7 +13,7 @@ describe('session closure', () => {
     const api: AuthenticationApi = { login: jest.fn().mockResolvedValue({ kind: 'success', value: issued }), activateInitialAccess: jest.fn(), refresh: jest.fn(), logoutCurrent: jest.fn().mockResolvedValue({ kind: 'success', value: undefined }), logoutAll: jest.fn().mockResolvedValue({ kind: 'success', value: undefined }) };
     let current: AuthenticationProviderValue | undefined;
     const Probe = () => { current = useAuthentication(); return null; };
-    const screen = await render(<AuthenticationProvider dependencies={{ api, storage: storage() }}><SessionControls /><Probe /></AuthenticationProvider>);
+    const screen = await render(<AuthenticationProvider dependencies={{ api, storage: storage() }}><AuthenticatedRouteShell /><Probe /></AuthenticationProvider>);
     await waitFor(() => expect(current?.state.phase).toBe('unauthenticated'));
     await fireEvent.press(screen.getByRole('button', { name: 'Cerrar todas las sesiones' }));
     expect(screen.getAllByLabelText('Cerrar todas las sesiones')).toHaveLength(3);

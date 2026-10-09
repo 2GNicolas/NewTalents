@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { useAuthentication } from '../../src/authentication/authentication-provider';
 import { AuthAlert, AuthButton, AuthTextField } from '../../src/design/components/auth-primitives';
@@ -8,7 +8,6 @@ import { AuthLayout } from '../../src/design/components/auth-layout';
 import { AuthenticationBackground, AuthenticationVisualPanel } from '../../src/design/components/auth-visual-panel';
 import { AuthenticationBrand } from '../../src/design/components/authentication-brand';
 import { authTokens } from '../../src/design/tokens';
-import { NavigationBackLink } from '../../src/design/components/navigation-back-link';
 
 type FieldErrors = Readonly<{ email?: string; password?: string }>;
 
@@ -53,7 +52,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <AuthLayout background={<AuthenticationBackground />} formHeader={<NavigationBackLink onPress={() => router.replace('/')} />} visual={<AuthenticationVisualPanel journey="login" />}>
+    <AuthLayout background={<AuthenticationBackground />} visual={<AuthenticationVisualPanel journey="login" />}>
       <View style={{ gap: authTokens.spacing.md }} testID="login-form-flow">
         <AuthenticationBrand variant="form" style={{ alignSelf: 'flex-start' }} />
         <View style={{ gap: authTokens.spacing.xxs }}>
@@ -65,6 +64,7 @@ export default function LoginScreen() {
           <AuthTextField label="Correo electrónico" value={email} onChangeText={setEmail} error={errors.email} keyboardType="email-address" autoComplete="email" textContentType="username" />
           <AuthTextField label="Contraseña" value={password} onChangeText={setPassword} error={errors.password} isPassword autoComplete="current-password" textContentType="password" />
           <AuthButton label="Iniciar sesión" loading={submitting} onPress={submit} testID="login-primary-action" />
+          <AuthButton label="Activar acceso inicial" variant="secondary" onPress={() => { setPassword(''); authentication.prepareActivation(); router.push('/(auth)/activate-initial-access'); }} testID="login-activation-action" />
         </View>
       </View>
     </AuthLayout>

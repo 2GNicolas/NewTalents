@@ -18,10 +18,10 @@ describe('login screen', () => {
     expect(screen.getByLabelText('La contraseña debe tener entre 12 y 128 caracteres.')).toBeTruthy();
   });
 
-  it('provides a visible password control and keeps the retired public activation action absent', async () => {
+  it('provides a visible password control, safe generic states, and the initial-access action', async () => {
     const screen = await render(<AuthenticationProvider><LoginScreen /></AuthenticationProvider>);
     expect(screen.getByRole('button', { name: 'Mostrar contraseña' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Activar acceso inicial' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Activar acceso inicial' })).toBeTruthy();
     expect(screen.queryByText(/registro|olvidé|google|facebook/i)).toBeNull();
   });
 
@@ -33,20 +33,14 @@ describe('login screen', () => {
     expect(screen.queryByText(/Accede de forma segura/i)).toBeNull();
   });
 
-  it('places the keyboard-accessible home action at the upper-left of the form region', async () => {
-    const screen = await render(<AuthenticationProvider><LoginScreen /></AuthenticationProvider>);
-    expect(screen.getByRole('button', { name: 'Volver al inicio' })).toBeTruthy();
-    expect(screen.getByTestId('auth-form-header').props.style).toEqual(expect.objectContaining({ left: expect.any(Number), position: 'absolute', top: expect.any(Number) }));
-    expect(screen.getByTestId('login-form-flow').children.join('')).not.toContain('Volver al inicio');
-  });
-
   it('uses a full-height desktop split with a 60/40 visual-to-form proportion and no floating card constraint', async () => {
     const screen = await render(<AuthLayout viewportWidth={1200} viewportHeight={800} visual={<AuthenticationVisualPanel journey="login" />}><ReactNative.Text>Formulario</ReactNative.Text></AuthLayout>);
     const desktop = screen.getByTestId('auth-layout-desktop');
     const desktopChildren = desktop.children.filter((child): child is typeof desktop => typeof child !== 'string');
     expect(desktopChildren[0]?.props.testID).toBe('auth-visual-region');
     expect(desktopChildren[1]?.props.testID).toBe('auth-form-region');
-    expect(screen.getByTestId('authentication-visual-login')).toBeTruthy();
+    const visualChildren = desktopChildren[0]?.children.filter((child): child is typeof desktop => typeof child !== 'string') ?? [];
+    expect(visualChildren[0]?.props.testID).toBe('authentication-visual-login');
     expect(desktopChildren[0]?.props.style).toEqual(expect.objectContaining({ flexBasis: '60%' }));
     expect(desktopChildren[1]?.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ flexBasis: '40%' })]));
     expect(desktop.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ width: '100%' })]));
@@ -55,7 +49,7 @@ describe('login screen', () => {
     const login = await render(<AuthenticationProvider><LoginScreen /></AuthenticationProvider>);
     expect(login.getByTestId('login-form-flow')).toBeTruthy();
     expect(login.getByTestId('login-primary-action')).toBeTruthy();
-    expect(login.queryByTestId('login-activation-action')).toBeNull();
+    expect(login.getByTestId('login-activation-action')).toBeTruthy();
     expect(login.queryByTestId('auth-fixed-action')).toBeNull();
   });
 

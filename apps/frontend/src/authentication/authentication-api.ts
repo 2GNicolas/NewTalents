@@ -1,5 +1,5 @@
 import { loadPublicEnvironment, type FrontendPublicConfiguration } from '../config/public-environment';
-import type { AuthenticationResult, InitialAccessInput, LoginInput, SessionAccessProjection, SessionMaterial } from './authentication-types';
+import type { AuthenticationResult, InitialAccessInput, LoginInput, SessionMaterial } from './authentication-types';
 
 export const AUTH_OPERATION_PATHS = Object.freeze({
   login: '/auth/login',
@@ -30,17 +30,7 @@ function parseIssuedMaterial(value: unknown): SessionMaterial | null {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Record<string, unknown>;
   if (typeof candidate.accessToken !== 'string' || typeof candidate.refreshToken !== 'string' || candidate.tokenType !== 'Bearer' || typeof candidate.expiresIn !== 'number') return null;
-  const access = parseSessionAccess(candidate.access);
-  return Object.freeze({ accessToken: candidate.accessToken, refreshToken: candidate.refreshToken, tokenType: 'Bearer', expiresIn: candidate.expiresIn, ...(access ? { access } : {}) });
-}
-
-function parseSessionAccess(value: unknown): SessionAccessProjection | null {
-  if (!value || typeof value !== 'object') return null;
-  const candidate = value as Record<string, unknown>;
-  if ((candidate.classification !== 'pending-onboarding' && candidate.classification !== 'product') || !Array.isArray(candidate.capabilities) || !candidate.capabilities.every((item) => typeof item === 'string')) return null;
-  if (candidate.requestId !== undefined && typeof candidate.requestId !== 'string') return null;
-  if (candidate.academyId !== undefined && typeof candidate.academyId !== 'string') return null;
-  return Object.freeze({ classification: candidate.classification, capabilities: Object.freeze([...candidate.capabilities]), ...(candidate.requestId ? { requestId: candidate.requestId } : {}), ...(candidate.academyId ? { academyId: candidate.academyId } : {}) });
+  return Object.freeze({ accessToken: candidate.accessToken, refreshToken: candidate.refreshToken, tokenType: 'Bearer', expiresIn: candidate.expiresIn });
 }
 
 function retryAfter(response: Response): number | undefined {

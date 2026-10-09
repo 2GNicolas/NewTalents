@@ -67,23 +67,14 @@ describe('Feature 003 authentication persistence schema', () => {
       eventClient.release();
     }
 
-    const administratorBaseline = await pool.query<{ history: number; active: number }>(`
-      SELECT
-        count(*)::int AS history,
-        count(*) FILTER (WHERE ra.status = 'ACTIVE' AND i.status = 'ACTIVE')::int AS active
-      FROM "RoleAssignment" ra
-      JOIN "Identity" i ON i.id = ra."identityId"
-      WHERE ra.role = 'ADMINISTRATOR'
-    `);
-    const baseline = administratorBaseline.rows[0]!;
     const initialPredicates = await pool.query<{ never: boolean; noactive: boolean }>('SELECT "authentication_has_never_had_administrator_assignment"() AS never, "authentication_has_no_active_eligible_administrator"() AS noactive');
-    expect(initialPredicates.rows[0]).toEqual({ never: baseline.history === 0, noactive: baseline.active === 0 });
+    expect(initialPredicates.rows[0]).toEqual({ never: true, noactive: true });
     await pool.query("INSERT INTO \"RoleAssignment\" (\"identityId\", role, status, \"assignedByIdentityId\") VALUES ($1, 'ADMINISTRATOR', 'ACTIVE', $1)", [first.rows[0]!.id]);
     const activeAdministratorPredicates = await pool.query<{ never: boolean; noactive: boolean }>('SELECT "authentication_has_never_had_administrator_assignment"() AS never, "authentication_has_no_active_eligible_administrator"() AS noactive');
     expect(activeAdministratorPredicates.rows[0]).toEqual({ never: false, noactive: false });
     await pool.query("UPDATE \"RoleAssignment\" SET status = 'REVOKED', \"revokedAt\" = now() WHERE \"identityId\" = $1 AND role = 'ADMINISTRATOR'", [first.rows[0]!.id]);
     const historicalAdministratorPredicates = await pool.query<{ never: boolean; noactive: boolean }>('SELECT "authentication_has_never_had_administrator_assignment"() AS never, "authentication_has_no_active_eligible_administrator"() AS noactive');
-    expect(historicalAdministratorPredicates.rows[0]).toEqual({ never: false, noactive: baseline.active === 0 });
+    expect(historicalAdministratorPredicates.rows[0]).toEqual({ never: false, noactive: true });
 
     const indexes = await pool.query<{ indexname: string }>("SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('TemporaryCredential', 'RefreshTokenHistory', 'AuthenticationSession', 'AuthenticationAttempt', 'AuthenticationSecurityEvent')");
     expect(indexes.rows.map((row) => row.indexname)).toContain('temporary_credentials_one_issued_identity');

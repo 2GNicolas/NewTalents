@@ -1,16 +1,8 @@
-export type SessionAccessProjection = Readonly<{
-  classification: 'pending-onboarding' | 'product';
-  capabilities: readonly string[];
-  requestId?: string;
-  academyId?: string;
-}>;
-
 export type SessionMaterial = Readonly<{
   accessToken: string;
   refreshToken: string;
   tokenType: 'Bearer';
   expiresIn: number;
-  access?: SessionAccessProjection;
 }>;
 
 export type AuthenticationResult<T> =

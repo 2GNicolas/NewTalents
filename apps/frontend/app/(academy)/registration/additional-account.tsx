@@ -1,4 +1,0 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { AdditionalAccountFlow } from '../../../src/registration-requests/academy/additional-account-flow';
-import { AcademyOperationRoute } from '../../../src/registration-requests/academy/academy-operation-route';
-export default function AdditionalAcademyAccountScreen() { const params = useLocalSearchParams<{ academyId?: string; preview?: string }>(); const router = useRouter(); const preview = params.preview === 'desktop' || params.preview === 'mobile'; return <AcademyOperationRoute academyId={params.academyId ?? ''} preview={preview}>{(academy, operations) => <AdditionalAccountFlow academy={academy} initialValid={preview} onBack={() => router.replace({ pathname: '/(academy)/registration', params: { academyId: academy.id } })} onSubmit={operations.onSubmit} evidenceQueue={operations.evidenceQueue} getSubmissionError={operations.getSubmissionError} />}</AcademyOperationRoute>; }

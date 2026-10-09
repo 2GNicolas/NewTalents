@@ -19,23 +19,6 @@ const valid = {
   AUTH_TRUSTED_PROXY: 'false',
   AUTH_SESSION_RETENTION_DAYS: '90',
   AUTH_ATTEMPT_RETENTION_HOURS: '24',
-  PASSPORT_DOCUMENT_HMAC_KEY: 'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=',
-  PASSPORT_NAME_DOB_HMAC_KEY: 'AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=',
-  PASSPORT_PRIVATE_ENCRYPTION_KEY: 'AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=',
-  REGISTRATION_EVIDENCE_PROVIDER: 'local',
-  REGISTRATION_EVIDENCE_PRIVATE_ROOT: 'C:/private/new-talents/evidence',
-  REGISTRATION_EVIDENCE_ALLOWED_MIME_TYPES: 'application/pdf,image/jpeg,image/png',
-  REGISTRATION_EVIDENCE_MAX_ITEM_BYTES: '10485760',
-  REGISTRATION_EVIDENCE_MAX_REQUEST_BYTES: '41943040',
-  REGISTRATION_SCANNER_HOST: '127.0.0.1',
-  REGISTRATION_SCANNER_PORT: '3310',
-  REGISTRATION_SCANNER_TIMEOUT_MS: '5000',
-  REGISTRATION_PENDING_SESSION_TTL_SECONDS: '86400',
-  REGISTRATION_DELETION_BATCH_SIZE: '25',
-  REGISTRATION_DELETION_LEASE_SECONDS: '60',
-  REGISTRATION_DELETION_BACKOFF_SECONDS: '30',
-  REGISTRATION_DELETION_MAX_ATTEMPTS: '5',
-  REGISTRATION_ORPHAN_GRACE_SECONDS: '86400',
 };
 
 describe('parseBackendEnvironment', () => {
@@ -59,39 +42,13 @@ describe('parseBackendEnvironment', () => {
         sessionRetentionDays: 90,
         attemptRetentionHours: 24,
       },
-      passport: {
-        documentHmacKey: valid.PASSPORT_DOCUMENT_HMAC_KEY,
-        nameDobHmacKey: valid.PASSPORT_NAME_DOB_HMAC_KEY,
-        privateEncryptionKey: valid.PASSPORT_PRIVATE_ENCRYPTION_KEY,
-      },
-      registration: {
-        evidence: {
-          provider: 'local', privateRoot: 'C:/private/new-talents/evidence', bucket: null, region: null, encryption: null,
-          allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/png'], maxItemBytes: 10_485_760, maxRequestBytes: 41_943_040,
-        },
-        scanner: { host: '127.0.0.1', port: 3310, timeoutMs: 5_000 },
-        pendingSessionTtlSeconds: 86_400,
-        deletion: { batchSize: 25, leaseSeconds: 60, backoffSeconds: 30, maxAttempts: 5, orphanGraceSeconds: 86_400 },
-      },
     });
     expect(Object.isFrozen(configuration)).toBe(true);
     expect(Object.isFrozen(configuration.allowedOrigins)).toBe(true);
   });
 
-  it.each(['development', 'test'])('accepts NODE_ENV=%s', (nodeEnv) => {
+  it.each(['development', 'test', 'production'])('accepts NODE_ENV=%s', (nodeEnv) => {
     expect(parseBackendEnvironment({ ...valid, NODE_ENV: nodeEnv }).nodeEnv).toBe(nodeEnv);
-  });
-
-  it('accepts production only with the private encrypted S3 provider', () => {
-    expect(parseBackendEnvironment({
-      ...valid,
-      NODE_ENV: 'production',
-      REGISTRATION_EVIDENCE_PROVIDER: 's3',
-      REGISTRATION_EVIDENCE_PRIVATE_ROOT: undefined,
-      REGISTRATION_EVIDENCE_S3_BUCKET: 'new-talents-private-evidence',
-      REGISTRATION_EVIDENCE_S3_REGION: 'us-east-1',
-      REGISTRATION_EVIDENCE_S3_ENCRYPTION: 'AES256',
-    }).nodeEnv).toBe('production');
   });
 
   it.each([
@@ -121,23 +78,6 @@ describe('parseBackendEnvironment', () => {
     ['AUTH_TRUSTED_PROXY', 'sometimes'],
     ['AUTH_SESSION_RETENTION_DAYS', '91'], ['AUTH_ATTEMPT_RETENTION_HOURS', '25'],
   ])('fails closed for invalid authentication setting %s', (name, value) => {
-    expect(() => parseBackendEnvironment({ ...valid, [name]: value })).toThrow(`Invalid configuration: ${name}`);
-  });
-
-  it.each([
-    ['PASSPORT_DOCUMENT_HMAC_KEY', undefined],
-    ['PASSPORT_DOCUMENT_HMAC_KEY', ''],
-    ['PASSPORT_DOCUMENT_HMAC_KEY', '__REQUIRED__'],
-    ['PASSPORT_DOCUMENT_HMAC_KEY', 'CHANGE_ME'],
-    ['PASSPORT_DOCUMENT_HMAC_KEY', 'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE'],
-    ['PASSPORT_DOCUMENT_HMAC_KEY', 'not-a-valid-base64-key!'],
-    ['PASSPORT_NAME_DOB_HMAC_KEY', undefined],
-    ['PASSPORT_NAME_DOB_HMAC_KEY', '__REQUIRED__'],
-    ['PASSPORT_NAME_DOB_HMAC_KEY', 'not-a-valid-base64-key!'],
-    ['PASSPORT_PRIVATE_ENCRYPTION_KEY', undefined],
-    ['PASSPORT_PRIVATE_ENCRYPTION_KEY', 'CHANGE_ME'],
-    ['PASSPORT_PRIVATE_ENCRYPTION_KEY', 'not-a-valid-base64-key!'],
-  ])('fails closed for invalid passport key %s', (name, value) => {
     expect(() => parseBackendEnvironment({ ...valid, [name]: value })).toThrow(`Invalid configuration: ${name}`);
   });
 

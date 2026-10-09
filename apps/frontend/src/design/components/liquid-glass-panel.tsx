@@ -8,7 +8,7 @@ type LiquidGlassPanelProps = {
 };
 
 const webBackdropFilter = Platform.OS === 'web'
-  ? ({ backdropFilter: 'blur(28px) saturate(135%)', boxShadow: '0 16px 28px rgba(11, 189, 114, 0.25)', WebkitBackdropFilter: 'blur(28px) saturate(135%)' } as unknown as ViewStyle)
+  ? ({ backdropFilter: 'blur(28px) saturate(135%)', WebkitBackdropFilter: 'blur(28px) saturate(135%)' } as unknown as ViewStyle)
   : {};
 
 /**
@@ -17,9 +17,9 @@ const webBackdropFilter = Platform.OS === 'web'
  */
 export function LiquidGlassPanel({ children, style, testID }: LiquidGlassPanelProps) {
   return (
-    <View style={[styles.surface, styles.passThrough, Platform.OS !== 'web' && styles.nativeShadow, webBackdropFilter, style]} testID={testID}>
-      <View style={[styles.topHighlight, styles.decorative]} />
-      <View style={[styles.lowerReflection, styles.decorative]} />
+    <View pointerEvents="box-none" style={[styles.surface, webBackdropFilter, style]} testID={testID}>
+      <View pointerEvents="none" style={styles.topHighlight} />
+      <View pointerEvents="none" style={styles.lowerReflection} />
       {children}
     </View>
   );
@@ -32,10 +32,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
+    shadowColor: '#0BBD72',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.25,
+    shadowRadius: 28,
   },
-  nativeShadow: { shadowColor: '#0BBD72', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.25, shadowRadius: 28 },
-  passThrough: { pointerEvents: 'box-none' },
-  decorative: { pointerEvents: 'none' },
   topHighlight: {
     backgroundColor: 'rgba(240, 255, 246, 0.56)',
     height: 1,

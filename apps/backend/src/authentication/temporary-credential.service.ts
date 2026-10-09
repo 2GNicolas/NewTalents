@@ -11,7 +11,7 @@ import { SecurityEventService } from './security-event.service.js';
 
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const email = (value: unknown): value is string => typeof value === 'string' && value === value.trim().toLowerCase() && value.length > 3 && value.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-const eligible = new Set<FunctionalRole>(['ADMINISTRATOR', 'ANALYST', 'USER', 'TUTOR', 'ACADEMY_USER']);
+const eligible = new Set<FunctionalRole>(['ADMINISTRATOR', 'ANALYST', 'TUTOR', 'ACADEMY_USER']);
 
 export type TemporaryCredentialResult = Readonly<{ outcome: 'provisioned'; temporaryCredential: string }> | Readonly<{ outcome: 'denied' | 'invalid' | 'unavailable' }>;
 export type ProvisionTemporaryCredential = Readonly<{ actorIdentityId: unknown; identityId: unknown; normalizedEmail: unknown }>;

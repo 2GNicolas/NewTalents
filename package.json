@@ -29,7 +29,6 @@
     "dev:backend": "npm run dev --workspace=@new-talents/backend",
     "admin:initialize": "npm run admin:operator --workspace=@new-talents/backend -- initialize",
     "admin:recover": "npm run admin:operator --workspace=@new-talents/backend -- recover",
-    "dev:provision-review": "npm run dev:provision-review --workspace=@new-talents/backend",
     "dev:frontend:web": "npm run web --workspace=@new-talents/frontend",
     "dev:frontend:android": "npm run android --workspace=@new-talents/frontend",
     "dev:frontend:ios": "npm run ios --workspace=@new-talents/frontend",

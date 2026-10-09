@@ -1,1 +1,0 @@
-export const PASSPORT_KEY_MATERIAL = Symbol('PASSPORT_KEY_MATERIAL');
