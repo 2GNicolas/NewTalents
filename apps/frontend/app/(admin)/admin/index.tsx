@@ -26,7 +26,7 @@ export default function AdministratorHomeScreen() {
   const api = useMemo(() => previewMode ? previewApi() : createAdministratorApi({ getAccessToken: authentication.getAccessToken }), [authentication.getAccessToken, previewMode]);
   const state = useRef(new AdminHomeState(api)).current; const [view, setView] = useState<AdminHomeView>(state.snapshot); const sync = useCallback(() => setView(state.snapshot), [state]); const load = useCallback(async () => { await state.load(); sync(); }, [state, sync]);
   useEffect(() => { void load(); }, [load]);
-  const navigate = (destination: AdministratorDestination) => { const pathname = destination === 'home' ? '/admin' : destination === 'requests' ? '/admin/registration' : destination === 'dossiers' ? '/admin/dossiers' : '/admin/custody'; router.push(previewMode ? { pathname: pathname as never, params: { preview: previewMode } } : pathname as never); };
+  const navigate = (destination: AdministratorDestination) => { const pathname = destination === 'home' ? '/admin' : destination === 'requests' ? '/admin/registration' : destination === 'dossiers' ? '/admin/dossiers' : destination === 'passports' ? '/admin/passports' : '/admin/custody'; router.push(previewMode ? { pathname: pathname as never, params: { preview: previewMode } } : pathname as never); };
   const logout = () => { void authentication.logout('current').then(() => router.replace('/(auth)/login' as never)); };
   return <AdministratorShell active="home" onNavigate={navigate} onLogout={logout} previewMode={previewMode}><AdminHome view={view} previewMode={previewMode} onNavigate={navigate} onRetry={() => { void load(); }} /></AdministratorShell>;
 }

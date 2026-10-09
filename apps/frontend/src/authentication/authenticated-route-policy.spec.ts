@@ -80,6 +80,16 @@ describe('Feature 005 authenticated route policy', () => {
     })).toEqual({ type: 'replace', href: '/(admin)/admin' });
   });
 
+  it('keeps Feature 008 passport collection and detail only with projected Administrator capabilities', () => {
+    const access = { classification: 'product' as const, capabilities: ['registration.review.list', 'passport.allowance.list', 'passport.allowance.view'] };
+    expect(resolveRootRouteAction('authenticated', '/admin/passports', access)).toEqual({ type: 'none' });
+    expect(resolveRootRouteAction('authenticated', '/admin/passports/passport-1', access)).toEqual({ type: 'none' });
+    expect(resolveRootRouteAction('authenticated', '/admin/passports', { classification: 'product', capabilities: ['registration.review.list'] }))
+      .toEqual({ type: 'replace', href: '/(admin)/admin' });
+    expect(resolveRootRouteAction('authenticated', '/admin/passports/passport-1', { classification: 'product', capabilities: ['registration.review.list'] }))
+      .toEqual({ type: 'replace', href: '/(admin)/admin' });
+  });
+
   it('selects Analyst custody from backend capabilities and never from visible role text', () => {
     expect(usesAnalystCustodyCollection({ classification: 'product', capabilities: ['passport.review'] })).toBe(true);
     expect(usesAnalystCustodyCollection({ classification: 'product', capabilities: [], role: 'ANALYST' } as never)).toBe(false);

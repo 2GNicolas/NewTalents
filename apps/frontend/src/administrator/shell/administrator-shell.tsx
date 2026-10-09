@@ -3,11 +3,13 @@ import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, useWindowDime
 
 import { authTokens } from '../../design/tokens';
 
-export type AdministratorDestination = 'home' | 'requests' | 'dossiers' | 'custody';
+export type AdministratorDestination = 'home' | 'requests' | 'dossiers' | 'passports' | 'custody';
+export const administratorDestinationPath = (destination: AdministratorDestination): string => ({ home: '/admin', requests: '/admin/registration', dossiers: '/admin/dossiers', passports: '/admin/passports', custody: '/admin/custody' })[destination];
 const destinations: readonly Readonly<{ id: AdministratorDestination; label: string; icon: string }>[] = [
   { id: 'home', label: 'Inicio', icon: '⌂' },
   { id: 'requests', label: 'Solicitudes', icon: '▤' },
   { id: 'dossiers', label: 'Expedientes', icon: '□' },
+  { id: 'passports', label: 'Pasaportes', icon: '▣' },
   { id: 'custody', label: 'Custodia', icon: '♢' },
 ];
 const administratorTypeface = { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' } as unknown as ViewStyle;
@@ -51,7 +53,7 @@ function NavItem({ destination, active, onPress, desktop = false }: Readonly<{
   desktop?: boolean;
 }>) {
   return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={destination.label} onPress={onPress} style={[styles.navItem, desktop ? styles.navItemDesktop : styles.navItemMobile, active && styles.navItemActive]}>
-    <Text style={[styles.navIcon, active && styles.navTextActive]}>{destination.icon}</Text><Text style={[styles.navText, active && styles.navTextActive]}>{destination.label}</Text>
+    <Text style={[styles.navIcon, active && styles.navTextActive]}>{destination.icon}</Text><Text style={[styles.navText, !desktop && styles.navTextMobile, active && styles.navTextActive]}>{destination.label}</Text>
   </Pressable>;
 }
 
@@ -64,7 +66,7 @@ const styles = StyleSheet.create({
   brand: { color: '#f6f8ef', fontSize: 27, fontStyle: 'italic', fontWeight: '900', letterSpacing: -1 }, brandCompact: { fontSize: 18 }, brandLime: { color: '#caff24' },
   navRail: { gap: 10, marginLeft: -34, marginRight: -18, marginTop: 58 },
   navItem: { alignItems: 'center', minHeight: 48 }, navItemDesktop: { borderColor: 'transparent', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 14, paddingHorizontal: 34, paddingVertical: 12 }, navItemMobile: { flex: 1, gap: 2, justifyContent: 'center', paddingHorizontal: 4 },
-  navItemActive: { backgroundColor: 'rgba(42, 255, 123, .11)', borderColor: '#8aff9c' }, navIcon: { color: '#f5f7ef', fontSize: 23 }, navText: { color: '#f5f7ef', fontSize: 15 }, navTextActive: { color: '#d6ff19', fontWeight: '800' },
+  navItemActive: { backgroundColor: 'rgba(42, 255, 123, .11)', borderColor: '#8aff9c' }, navIcon: { color: '#f5f7ef', fontSize: 23 }, navText: { color: '#f5f7ef', fontSize: 15 }, navTextMobile: { fontSize: 11, textAlign: 'center' }, navTextActive: { color: '#d6ff19', fontWeight: '800' },
   account: { alignItems: 'stretch', borderTopColor: 'rgba(210,255,226,.32)', borderTopWidth: 1, gap: 12, marginTop: 'auto', paddingTop: 18 }, accountIdentity: { alignItems: 'center', flexDirection: 'row', gap: 12 }, accountIcon: { color: '#f5f7ef', fontSize: 30 }, accountText: { color: '#f5f7ef', fontSize: 15 },
   logout: { alignItems: 'center', borderColor: 'rgba(214,255,25,.72)', borderRadius: 9, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 12 }, logoutCompact: { minWidth: 112 }, logoutText: { color: '#eaff8b', fontSize: 13, fontWeight: '800' },
   content: { flex: 1, minWidth: 0 }, mobileHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 18 },

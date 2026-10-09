@@ -70,6 +70,16 @@ export type DossierHistoryEntry = Readonly<{ at: string; action: 'DOSSIER_CONFIR
 export type DossierDetail = DossierSummary & Readonly<{ confirmationHistory: readonly DossierHistoryEntry[] }>;
 export type DossierFilters = Readonly<{ query?: string; status?: DossierStatus; requestType?: RegistrationRequestType; confirmedFrom?: string; confirmedTo?: string; limit: number }>;
 
+export type AllowanceCadence = 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUAL' | 'ANNUAL';
+export type AdminPassportCard = Readonly<{ id: string; playerLabel: string; maskedReference: string; state: string; canConfigure: boolean }>;
+export type MatchAllowanceRule = Readonly<{ cadence: AllowanceCadence; matchLimit: number; effectiveOn: string }>;
+export type MatchAllowance = Readonly<{ version: number; activatedOn: string; currentRule: MatchAllowanceRule; currentPeriod: Readonly<{ start: string; endExclusive: string }>; pendingRule: MatchAllowanceRule | null; lastModifiedAt: string }>;
+export type MatchAllowanceEnvelope = Readonly<{ colombiaToday: string; configuration: MatchAllowance | null }>;
+export type AdminPassportDetail = Readonly<{ passport: AdminPassportCard; allowance: MatchAllowanceEnvelope; existingSections?: readonly Readonly<{ kind: string; label: string; href: string }>[] }>;
+export type MatchAllowanceCommand = Readonly<{ expectedVersion: number; idempotencyKey: string; cadence: AllowanceCadence; matchLimit: number; expectedActivationDate?: string }>;
+export type MatchAllowanceRevision = Readonly<{ sequence: number; confirmedAt: string; actorLabel: string; effectiveOn: string; previousRule: MatchAllowanceRule | null; newRule: MatchAllowanceRule }>;
+export type AllowanceApiResult<T> = AdministratorApiResult<T> | Readonly<{ kind: 'allowance-conflict'; current?: MatchAllowanceEnvelope }> | Readonly<{ kind: 'activation-date-changed' }> | Readonly<{ kind: 'invalid-input' }>;
+
 export type AdministratorApiResult<T> =
   | Readonly<{ kind: 'success'; value: T }>
   | Readonly<{ kind: 'version-conflict' }>
@@ -86,6 +96,11 @@ type ApiConfiguration = Readonly<{ apiBaseUrl?: string; getAccessToken?: () => s
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 export type AdministratorApi = Readonly<{
+  listAdminPassports: (filters: Readonly<{ limit: number }>, cursor?: string) => Promise<AdministratorApiResult<Readonly<{ items: readonly AdminPassportCard[]; nextCursor: string | null }>>>;
+  getAdminPassportDetail: (passportId: string) => Promise<AdministratorApiResult<AdminPassportDetail>>;
+  getMatchAllowance: (passportId: string) => Promise<AdministratorApiResult<MatchAllowanceEnvelope>>;
+  confirmMatchAllowance: (passportId: string, command: MatchAllowanceCommand) => Promise<AllowanceApiResult<MatchAllowanceEnvelope>>;
+  listMatchAllowanceHistory: (passportId: string, limit: number, cursor?: string) => Promise<AdministratorApiResult<Readonly<{ items: readonly MatchAllowanceRevision[]; nextCursor: string | null }>>>;
   getRequestOperations: (filters: RequestOperationsFilters) => Promise<AdministratorApiResult<Readonly<{ groups: readonly OperationalGroupView[] }>>>;
   updateReviewProgress: (requestId: string, command: ReviewProgressCommand) => Promise<AdministratorApiResult<OperationalRequest>>;
   listCompleteRequests: (filters: CompleteRequestFilters, cursor?: string) => Promise<RegistrationApiResult<Page>>;
@@ -107,6 +122,66 @@ export type AdministratorApi = Readonly<{
 
 const isOneOf = <T extends readonly string[]>(value: unknown, values: T): value is T[number] => typeof value === 'string' && values.includes(value as T[number]);
 const hasOnlyKeys = (value: Record<string, unknown>, allowed: readonly string[]) => Object.keys(value).every((key) => allowed.includes(key));
+const dateOnly = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+const positiveSafeInteger = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+
+function parseAdminPassportCard(value: unknown): AdminPassportCard | null {
+  if (!value || typeof value !== 'object') return null;
+  const item = value as Record<string, unknown>;
+  return hasOnlyKeys(item, ['id', 'playerLabel', 'maskedReference', 'state', 'canConfigure']) && typeof item.id === 'string' && typeof item.playerLabel === 'string' && typeof item.maskedReference === 'string' && typeof item.state === 'string' && typeof item.canConfigure === 'boolean'
+    ? Object.freeze({ id: item.id, playerLabel: item.playerLabel, maskedReference: item.maskedReference, state: item.state, canConfigure: item.canConfigure }) : null;
+}
+function parseRule(value: unknown): MatchAllowanceRule | null {
+  if (!value || typeof value !== 'object') return null;
+  const rule = value as Record<string, unknown>;
+  return hasOnlyKeys(rule, ['cadence', 'matchLimit', 'effectiveOn']) && isOneOf(rule.cadence, ['MONTHLY', 'QUARTERLY', 'SEMIANNUAL', 'ANNUAL'] as const) && positiveSafeInteger(rule.matchLimit) && dateOnly(rule.effectiveOn)
+    ? Object.freeze({ cadence: rule.cadence, matchLimit: rule.matchLimit, effectiveOn: rule.effectiveOn }) : null;
+}
+function parseAllowance(value: unknown): MatchAllowanceEnvelope | null {
+  if (!value || typeof value !== 'object') return null;
+  const envelope = value as Record<string, unknown>;
+  if (!hasOnlyKeys(envelope, ['colombiaToday', 'configuration']) || !dateOnly(envelope.colombiaToday)) return null;
+  if (envelope.configuration === null) return Object.freeze({ colombiaToday: envelope.colombiaToday, configuration: null });
+  if (!envelope.configuration || typeof envelope.configuration !== 'object') return null;
+  const config = envelope.configuration as Record<string, unknown>;
+  if (!hasOnlyKeys(config, ['version', 'activatedOn', 'currentRule', 'currentPeriod', 'pendingRule', 'lastModifiedAt']) || !positiveSafeInteger(config.version) || !dateOnly(config.activatedOn) || typeof config.lastModifiedAt !== 'string') return null;
+  const currentRule = parseRule(config.currentRule); const pendingRule = config.pendingRule === null ? null : parseRule(config.pendingRule);
+  if (!currentRule || (config.pendingRule !== null && !pendingRule) || !config.currentPeriod || typeof config.currentPeriod !== 'object') return null;
+  const period = config.currentPeriod as Record<string, unknown>;
+  if (!hasOnlyKeys(period, ['start', 'endExclusive']) || !dateOnly(period.start) || !dateOnly(period.endExclusive)) return null;
+  return Object.freeze({ colombiaToday: envelope.colombiaToday, configuration: Object.freeze({ version: config.version, activatedOn: config.activatedOn,
+    currentRule, currentPeriod: Object.freeze({ start: period.start, endExclusive: period.endExclusive }), pendingRule, lastModifiedAt: config.lastModifiedAt }) });
+}
+function parseAdminPassportDetail(value: unknown): AdminPassportDetail | null {
+  if (!value || typeof value !== 'object') return null;
+  const detail = value as Record<string, unknown>;
+  if (!hasOnlyKeys(detail, ['passport', 'allowance', 'existingSections'])) return null;
+  const passport = parseAdminPassportCard(detail.passport); const allowance = parseAllowance(detail.allowance);
+  if (!passport || !allowance) return null;
+  if (detail.existingSections === undefined) return Object.freeze({ passport, allowance });
+  if (!Array.isArray(detail.existingSections)) return null;
+  const sections = detail.existingSections.map((value: unknown) => {
+    if (!value || typeof value !== 'object') return null;
+    const item = value as Record<string, unknown>;
+    return hasOnlyKeys(item, ['kind', 'label', 'href']) && isOneOf(item.kind, ['PASSPORT', 'REQUEST', 'DOSSIER', 'CUSTODY'] as const) && typeof item.label === 'string' && typeof item.href === 'string'
+      ? Object.freeze({ kind: item.kind, label: item.label, href: item.href }) : null;
+  });
+  return sections.some((item) => item === null) ? null : Object.freeze({ passport, allowance, existingSections: Object.freeze(sections as NonNullable<AdminPassportDetail['existingSections']>) });
+}
+function parseAdminPage<T>(value: unknown, parseItem: (value: unknown) => T | null): Readonly<{ items: readonly T[]; nextCursor: string | null }> | null {
+  if (!value || typeof value !== 'object') return null;
+  const page = value as Record<string, unknown>;
+  if (!hasOnlyKeys(page, ['items', 'nextCursor']) || !Array.isArray(page.items) || !(page.nextCursor === null || typeof page.nextCursor === 'string')) return null;
+  const items = page.items.map(parseItem);
+  return items.some((item) => item === null) ? null : Object.freeze({ items: Object.freeze(items as T[]), nextCursor: page.nextCursor as string | null });
+}
+function parseRevision(value: unknown): MatchAllowanceRevision | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  if (!hasOnlyKeys(row, ['sequence', 'confirmedAt', 'actorLabel', 'effectiveOn', 'previousRule', 'newRule']) || !positiveSafeInteger(row.sequence) || typeof row.confirmedAt !== 'string' || typeof row.actorLabel !== 'string' || !dateOnly(row.effectiveOn)) return null;
+  const previousRule = row.previousRule === null ? null : parseRule(row.previousRule); const newRule = parseRule(row.newRule);
+  return newRule && (row.previousRule === null || previousRule) ? Object.freeze({ sequence: row.sequence, confirmedAt: row.confirmedAt, actorLabel: row.actorLabel, effectiveOn: row.effectiveOn, previousRule, newRule }) : null;
+}
 
 function parseOperationalRequest(value: unknown): OperationalRequest | null {
   if (!value || typeof value !== 'object') return null;
@@ -307,6 +382,58 @@ export function createAdministratorApi(
   });
 
   return Object.freeze({
+    listAdminPassports: async (filters, cursor) => {
+      if (!baseUrl) return { kind: 'unavailable' };
+      const query = new URLSearchParams({ limit: String(filters.limit), ...(cursor ? { cursor } : {}) });
+      try { const response = await fetcher(endpoint(`/admin/passports?${query}`), { headers: headers(), cache: 'no-store' });
+        if (!response.ok) return classifyFailure(response.status);
+        const value = parseAdminPage(await response.json(), parseAdminPassportCard);
+        return value ? { kind: 'success', value } : { kind: 'invalid-response' };
+      } catch { return { kind: 'connectivity-failure' }; }
+    },
+    getAdminPassportDetail: async (passportId) => {
+      if (!baseUrl) return { kind: 'unavailable' };
+      try { const response = await fetcher(endpoint(`/admin/passports/${encodeURIComponent(passportId)}`), { headers: headers(), cache: 'no-store' });
+        if (!response.ok) return classifyFailure(response.status);
+        const value = parseAdminPassportDetail(await response.json());
+        return value ? { kind: 'success', value } : { kind: 'invalid-response' };
+      } catch { return { kind: 'connectivity-failure' }; }
+    },
+    getMatchAllowance: async (passportId) => {
+      if (!baseUrl) return { kind: 'unavailable' };
+      try { const response = await fetcher(endpoint(`/admin/passports/${encodeURIComponent(passportId)}/match-allowance`), { headers: headers(), cache: 'no-store' });
+        if (!response.ok) return classifyFailure(response.status);
+        const value = parseAllowance(await response.json());
+        return value ? { kind: 'success', value } : { kind: 'invalid-response' };
+      } catch { return { kind: 'connectivity-failure' }; }
+    },
+    confirmMatchAllowance: async (passportId, command) => {
+      if (!baseUrl) return { kind: 'unavailable' };
+      try { const response = await fetcher(endpoint(`/admin/passports/${encodeURIComponent(passportId)}/match-allowance`), { method: 'PUT', headers: headers(true), body: JSON.stringify(command), cache: 'no-store' });
+        if (response.status === 409) {
+          const error = await response.json() as Record<string, unknown>;
+          if (error.code === 'ACTIVATION_DATE_CHANGED') return { kind: 'activation-date-changed' };
+          if (error.code === 'ALLOWANCE_CONFLICT' || error.code === 'IDEMPOTENCY_CONFLICT') {
+            const current = parseAllowance(error.current);
+            return { kind: 'allowance-conflict', ...(current ? { current } : {}) };
+          }
+          return { kind: 'invalid-response' };
+        }
+        if (response.status === 422) return { kind: 'invalid-input' };
+        if (!response.ok) return classifyFailure(response.status);
+        const value = parseAllowance(await response.json());
+        return value ? { kind: 'success', value } : { kind: 'invalid-response' };
+      } catch { return { kind: 'connectivity-failure' }; }
+    },
+    listMatchAllowanceHistory: async (passportId, limit, cursor) => {
+      if (!baseUrl) return { kind: 'unavailable' };
+      const query = new URLSearchParams({ limit: String(limit), ...(cursor ? { cursor } : {}) });
+      try { const response = await fetcher(endpoint(`/admin/passports/${encodeURIComponent(passportId)}/match-allowance/history?${query}`), { headers: headers(), cache: 'no-store' });
+        if (!response.ok) return classifyFailure(response.status);
+        const value = parseAdminPage(await response.json(), parseRevision);
+        return value ? { kind: 'success', value } : { kind: 'invalid-response' };
+      } catch { return { kind: 'connectivity-failure' }; }
+    },
     getRequestOperations: async (filters) => {
       if (!baseUrl) return { kind: 'unavailable' };
       const query = new URLSearchParams({ ...(filters.query ? { query: filters.query } : {}), ...(filters.requestType ? { requestType: filters.requestType } : {}) });

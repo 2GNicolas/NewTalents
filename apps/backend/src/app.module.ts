@@ -10,6 +10,7 @@ import { AuthenticationModule } from './authentication/authentication.module.js'
 import { PlayerPassportModule } from './player-passport/player-passport.module.js';
 import { RegistrationRequestsModule } from './registration-requests/registration-requests.module.js';
 import { PassportCustodyModule } from './passport-custody/passport-custody.module.js';
+import { PassportMatchAllowanceModule } from './passport-match-allowance/passport-match-allowance.module.js';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PassportCustodyModule } from './passport-custody/passport-custody.modul
     PlayerPassportModule,
     RegistrationRequestsModule,
     PassportCustodyModule,
+    PassportMatchAllowanceModule,
   ],
 })
 export class AppModule {}

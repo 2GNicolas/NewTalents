@@ -63,7 +63,7 @@ export default function AdministratorCustodyDetailScreen() {
     const label = confirmationView.action === 'REMOVE' ? 'Retirar custodia' : confirmationView.action === 'CHANGE' ? 'Cambiar Analista' : 'Asignar Analista';
     (document.querySelector(`[aria-label="${label}"]`) as HTMLElement | null)?.focus();
   };
-  const navigate = (destination: AdministratorDestination) => router.push((destination === 'home' ? '/admin' : destination === 'requests' ? '/admin/registration' : destination === 'dossiers' ? '/admin/dossiers' : '/admin/custody') as never);
+  const navigate = (destination: AdministratorDestination) => router.push((destination === 'home' ? '/admin' : destination === 'requests' ? '/admin/registration' : destination === 'dossiers' ? '/admin/dossiers' : destination === 'passports' ? '/admin/passports' : '/admin/custody') as never);
   const selecting = confirmationView.stage === 'selecting';
   const currentAnalystId = selecting && confirmationView.action === 'CHANGE' && confirmationView.passport.custody.state === 'ASSIGNED' ? confirmationView.passport.custody.analyst.identityId : undefined;
   const candidates = currentAnalystId ? analysts.filter((item) => item.identityId !== currentAnalystId) : analysts;

@@ -16,6 +16,8 @@ function requiredAdministratorCapability(pathname: string): string | undefined {
   if (pathname === ADMIN_REGISTRATION_ROUTE || pathname.startsWith(`${ADMIN_REGISTRATION_ROUTE}/`)) return 'registration.review.list';
   if (pathname === '/admin/dossiers') return 'registration.dossier.list';
   if (pathname.startsWith('/admin/dossiers/')) return 'registration.dossier.view';
+  if (pathname === '/admin/passports') return 'passport.allowance.list';
+  if (pathname.startsWith('/admin/passports/')) return 'passport.allowance.view';
   if (pathname === '/admin/custody') return 'passport.custody.list';
   if (pathname.startsWith('/admin/custody/')) return 'passport.custody.view';
   return undefined;

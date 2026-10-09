@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { LiquidGlassPanel } from '../../design/components/liquid-glass-panel';
@@ -7,12 +7,12 @@ import type { CustodyHistoryEntry, CustodyPassportDetail as CustodyPassportDetai
 
 export type CustodyDetailState = 'loading' | 'ready' | 'restricted' | 'missing' | 'unavailable' | 'error';
 
-export function PassportCustodyDetail({ state, detail, onRetry, onBack, backLabel = 'Volver a Custodia', onOpenRequest, onOpenDossier, onAssign, onChange, onRemove, previewMode }: Readonly<{
+export function PassportCustodyDetail({ state, detail, onRetry, onBack, backLabel = 'Volver a Custodia', onOpenRequest, onOpenDossier, onAssign, onChange, onRemove, previewMode, children }: Readonly<{
   state: CustodyDetailState; detail?: CustodyPassportDetailModel; onRetry: () => void; onBack: () => void;
   backLabel?: string;
   onOpenRequest: (id: string) => void; onOpenDossier: (id: string) => void;
   onAssign: (detail: CustodyPassportDetailModel) => void; onChange: (detail: CustodyPassportDetailModel) => void; onRemove: (detail: CustodyPassportDetailModel) => void;
-  previewMode?: 'desktop' | 'mobile';
+  previewMode?: 'desktop' | 'mobile'; children?: ReactNode;
 }>) {
   const dimensions = useWindowDimensions();
   const desktop = previewMode ? previewMode === 'desktop' : dimensions.width >= authTokens.breakpoints.desktop;
@@ -30,6 +30,8 @@ export function PassportCustodyDetail({ state, detail, onRetry, onBack, backLabe
         <Text style={styles.status}>✓ Activo básico</Text><Text style={styles.enrichment}>En espera de enriquecimiento del Analista</Text>
       </View>{detail.academyLabel ? <Text style={[styles.academy, !desktop && styles.academyMobile]}>{detail.academyLabel}</Text> : null}
     </LiquidGlassPanel>
+
+    {children}
 
     <View style={[styles.grid, !desktop && styles.stack]}>
       <View style={[styles.column, !desktop && styles.mobileSection]}>

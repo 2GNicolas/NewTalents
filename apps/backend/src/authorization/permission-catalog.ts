@@ -51,6 +51,11 @@ export const permissionCatalog = Object.freeze({
   'passport.custody.assign': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-custody-assign' as const }),
   'passport.custody.change': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-custody-change' as const }),
   'passport.custody.remove': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-custody-remove' as const }),
+  'passport.allowance.list': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-allowance-list' as const }),
+  'passport.allowance.view': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-allowance-view' as const }),
+  'passport.allowance.read': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-allowance-read' as const }),
+  'passport.allowance.write': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-allowance-write' as const }),
+  'passport.allowance.history': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-allowance-history' as const }),
 });
 export type Permission = keyof typeof permissionCatalog;
 export const isPermission = (value: unknown): value is Permission => typeof value === 'string' && value in permissionCatalog;

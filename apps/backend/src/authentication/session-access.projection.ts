@@ -45,6 +45,11 @@ export function projectSessionAccess(identity: Readonly<{
       'passport.custody.assign',
       'passport.custody.change',
       'passport.custody.remove',
+      'passport.allowance.list',
+      'passport.allowance.view',
+      'passport.allowance.read',
+      'passport.allowance.write',
+      'passport.allowance.history',
     ] : []),
     ...(analyst ? ['passport.review'] : []),
   ];

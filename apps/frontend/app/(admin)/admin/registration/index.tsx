@@ -36,7 +36,7 @@ export default function AdministratorRequestsScreen() {
   const loadOperations = useCallback(async () => { const pending = state.loadOperations(); sync(); await pending; sync(); }, [state, sync]);
   useEffect(() => { void loadOperations(); }, [loadOperations]);
   const navigate = (destination: AdministratorDestination) => {
-    const href = destination === 'home' ? '/admin' : destination === 'requests' ? '/admin/registration' : destination === 'dossiers' ? '/admin/dossiers' : '/admin/custody';
+    const href = destination === 'home' ? '/admin' : destination === 'requests' ? '/admin/registration' : destination === 'dossiers' ? '/admin/dossiers' : destination === 'passports' ? '/admin/passports' : '/admin/custody';
     router.push(href as never);
   };
   const openOperational = async (request: OperationalRequest) => {

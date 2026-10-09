@@ -48,7 +48,7 @@ export default function AdministratorCustodyScreen() {
   const sync = useCallback(() => setView(state.snapshot), [state]);
   const load = useCallback(async () => { await state.load(); sync(); }, [state, sync]);
   useEffect(() => { void load(); return () => confirmation.dispose(); }, [confirmation, load]);
-  const navigate = (destination: AdministratorDestination) => router.push((destination === 'home' ? '/admin' : destination === 'requests' ? '/admin/registration' : destination === 'dossiers' ? '/admin/dossiers' : '/admin/custody') as never);
+  const navigate = (destination: AdministratorDestination) => router.push((destination === 'home' ? '/admin' : destination === 'requests' ? '/admin/registration' : destination === 'dossiers' ? '/admin/dossiers' : destination === 'passports' ? '/admin/passports' : '/admin/custody') as never);
   const search = async (query: string) => { state.setSearch(query); sync(); await load(); };
   const syncConfirmation = () => setConfirmationView(confirmation.snapshot);
   const openConfirmation = (passportId: string, analystIdentityId: string) => {

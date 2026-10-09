@@ -31,6 +31,31 @@ const registrationApi = (): jest.Mocked<RegistrationRequestApi> => ({
 });
 
 describe('AdministratorApi', () => {
+  it('parses safe all-passport cards, detail and allowance without retaining private fields', async () => {
+    const card = { id: '10000000-0000-4000-8000-000000000001', playerLabel: 'Jugador de prueba', maskedReference: 'PAS-••••-0001', state: 'ACTIVE', canConfigure: true };
+    const allowance = { colombiaToday: '2026-10-09', configuration: null };
+    const fetcher = jest.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [card], nextCursor: 'cursor' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ passport: card, allowance }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ configuration: null, colombiaToday: '2026-10-09', email: 'private@example.test' }), { status: 200 }));
+    const api = createAdministratorApi({ apiBaseUrl: 'https://api.example.test/api/' }, fetcher, registrationApi());
+    await expect(api.listAdminPassports({ limit: 20 })).resolves.toEqual({ kind: 'success', value: { items: [card], nextCursor: 'cursor' } });
+    await expect(api.getAdminPassportDetail(card.id)).resolves.toEqual({ kind: 'success', value: { passport: card, allowance } });
+    await expect(api.getMatchAllowance(card.id)).resolves.toEqual({ kind: 'invalid-response' });
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ cache: 'no-store' });
+  });
+
+  it('sends a confirmed closed allowance command and classifies a safe stale conflict', async () => {
+    const id = '10000000-0000-4000-8000-000000000001';
+    const command = { expectedVersion: 0, idempotencyKey: '20000000-0000-4000-8000-000000000001', cadence: 'MONTHLY' as const, matchLimit: 4, expectedActivationDate: '2026-10-09' };
+    const fetcher = jest.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ colombiaToday: '2026-10-09', configuration: null }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ code: 'ALLOWANCE_CONFLICT', message: 'refresh', current: { colombiaToday: '2026-10-09', configuration: null } }), { status: 409 }));
+    const api = createAdministratorApi({ apiBaseUrl: 'https://api.example.test/api/' }, fetcher, registrationApi());
+    await expect(api.confirmMatchAllowance(id, command)).resolves.toMatchObject({ kind: 'success' });
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ method: 'PUT', body: JSON.stringify(command), cache: 'no-store' });
+    await expect(api.confirmMatchAllowance(id, command)).resolves.toMatchObject({ kind: 'allowance-conflict', current: { configuration: null } });
+  });
   it('parses exactly five operational groups and sends authorized stable filters', async () => {
     const groups = OPERATIONAL_GROUPS.map((group, index) => ({ group, total: 1, items: [request({ operationalGroup: group, nextAction: ['REVIEW', 'CONTINUE', 'VIEW_CORRECTION', 'DECIDE', 'VIEW_DELETION'][index] as OperationalRequest['nextAction'] })] }));
     const fetcher = jest.fn().mockResolvedValue(new Response(JSON.stringify({ data: { groups } }), { status: 200 }));

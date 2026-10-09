@@ -262,6 +262,13 @@ enum PassportCustodyAction {
   REMOVED
 }
 
+enum MatchAllowanceCadence {
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+}
+
 model Identity {
   id                                    String                                  @id @default(uuid()) @db.Uuid
   status                                IdentityStatus                          @default(ACTIVE)
@@ -307,6 +314,7 @@ model Identity {
   administeredPassportCustodyEvents     PassportCustodyEvent[]                  @relation("passportCustodyAdministrator")
   priorPassportCustodyEvents            PassportCustodyEvent[]                  @relation("passportCustodyPreviousAnalyst")
   nextPassportCustodyEvents             PassportCustodyEvent[]                  @relation("passportCustodyNextAnalyst")
+  confirmedMatchAllowanceRevisions      PassportMatchAllowanceRevision[]        @relation("matchAllowanceRevisionActor")
 }
 
 model RoleAssignment {
@@ -519,6 +527,7 @@ model PlayerPassport {
   lifecycleEvents          PassportLifecycleEvent[]
   custody                  PassportCustody?
   custodyEvents            PassportCustodyEvent[]
+  matchAllowance           PassportMatchAllowance?
 
   @@index([createdByIdentityId, state])
   @@index([originAcademyId])
@@ -1120,4 +1129,39 @@ model PassportCustodyEvent {
   @@unique([passportId, sequence])
   @@index([passportId, createdAt, id])
   @@index([administratorIdentityId, createdAt])
+}
+
+model PassportMatchAllowance {
+  id          String                           @id @default(uuid()) @db.Uuid
+  passportId  String                           @unique @db.Uuid
+  activatedOn DateTime                         @db.Date
+  version     Int                              @default(1)
+  createdAt   DateTime                         @default(now())
+  updatedAt   DateTime                         @updatedAt
+  passport    PlayerPassport                   @relation(fields: [passportId], references: [id], onDelete: Restrict)
+  revisions   PassportMatchAllowanceRevision[]
+}
+
+model PassportMatchAllowanceRevision {
+  id                         String                 @id @default(uuid()) @db.Uuid
+  allowanceId                String                 @db.Uuid
+  sequence                   Int
+  idempotencyKey             String                 @db.Uuid
+  expectedVersion            Int
+  cadence                    MatchAllowanceCadence
+  matchLimit                 BigInt                 @db.BigInt
+  effectiveOn                DateTime               @db.Date
+  previousCadence            MatchAllowanceCadence?
+  previousMatchLimit         BigInt?                @db.BigInt
+  previousEffectiveOn        DateTime?              @db.Date
+  supersededPendingRevision  Boolean                @default(false)
+  confirmedAt                DateTime               @default(now())
+  confirmedByIdentityId      String                 @db.Uuid
+  allowance                  PassportMatchAllowance @relation(fields: [allowanceId], references: [id], onDelete: Restrict)
+  administrator              Identity               @relation("matchAllowanceRevisionActor", fields: [confirmedByIdentityId], references: [id], onDelete: Restrict)
+
+  @@unique([allowanceId, sequence])
+  @@unique([allowanceId, idempotencyKey])
+  @@index([allowanceId, effectiveOn, sequence], map: "AllowanceRevision_effective_idx")
+  @@index([confirmedByIdentityId, confirmedAt], map: "AllowanceRevision_actor_confirmedAt_idx")
 }

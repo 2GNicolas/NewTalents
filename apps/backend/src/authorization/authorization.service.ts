@@ -90,6 +90,13 @@ export class AuthorizationService {
 
   private evaluateResourcePolicy(request: AuthorizationRequest, policy: string): AuthorizationDecision {
     const { resource, subject } = request;
+    if (policy.startsWith('admin-allowance-')) {
+      if (resource.administratorCapability !== true) return deny('insufficient-resource-facts');
+      if (policy === 'admin-allowance-list') return allow();
+      if (resource.passportExists !== true) return deny('insufficient-resource-facts');
+      if (policy === 'admin-allowance-write' && resource.passportActive !== true) return deny('insufficient-resource-facts');
+      return allow();
+    }
     if (policy === 'analyst-current-custody') {
       return resource.analystCustodyActive === true ? allow() : deny('insufficient-resource-facts');
     }
