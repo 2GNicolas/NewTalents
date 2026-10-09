@@ -65,4 +65,38 @@ describe('AuthenticationProvider', () => {
     await act(async () => { current?.prepareLogin(); });
     expect(screen.getByText('unauthenticated:none')).toBeTruthy();
   });
+
+  it('refreshes backend-projected capabilities after approval without decoding token roles', async () => {
+    const pendingMaterial = { ...issued, access: { classification: 'pending-onboarding' as const, requestId: '22222222-2222-4222-8222-222222222222', capabilities: ['registration.request.own.view'] } };
+    const approvedMaterial = { ...issued, accessToken: 'rotated-access-not-usable', refreshToken: 'rotated-refresh-not-usable', access: { classification: 'product' as const, capabilities: ['passport.particular.manage'] } };
+    const api: AuthenticationApi = {
+      login: jest.fn().mockResolvedValue({ kind: 'success', value: pendingMaterial }),
+      activateInitialAccess: jest.fn(),
+      refresh: jest.fn().mockResolvedValue({ kind: 'success', value: approvedMaterial }),
+      logoutCurrent: jest.fn(),
+      logoutAll: jest.fn(),
+    };
+    let current: AuthenticationProviderValue | undefined;
+    const Probe = () => { current = useAuthentication(); return <Text>{current.sessionAccess?.classification ?? 'none'}</Text>; };
+    const screen = await render(<AuthenticationProvider dependencies={{ api, storage: new SessionStorage({ platform: 'web', webStorage: webStorage() }) }}><Probe /></AuthenticationProvider>);
+    await waitFor(() => expect(screen.getByText('none')).toBeTruthy());
+    await act(async () => { await current?.login({ email: 'pending@example.test', password: 'test-password-not-usable' }); });
+    expect(screen.getByText('pending-onboarding')).toBeTruthy();
+    await act(async () => { await current?.refreshCapabilities(); });
+    expect(screen.getByText('product')).toBeTruthy();
+    expect(api.refresh).toHaveBeenCalledWith('test-refresh-not-usable');
+  });
+
+  it('can defer the pending route projection until the registration submission finishes', async () => {
+    const pendingMaterial = { ...issued, access: { classification: 'pending-onboarding' as const, requestId: '22222222-2222-4222-8222-222222222222', capabilities: ['registration.request.own.view'] } };
+    const api: AuthenticationApi = { login: jest.fn().mockResolvedValue({ kind: 'success', value: pendingMaterial }), activateInitialAccess: jest.fn(), refresh: jest.fn().mockResolvedValue({ kind: 'success', value: pendingMaterial }), logoutCurrent: jest.fn(), logoutAll: jest.fn() };
+    let current: AuthenticationProviderValue | undefined;
+    const Probe = () => { current = useAuthentication(); return <Text>{`${current.state.phase}:${current.sessionAccess?.classification ?? 'none'}`}</Text>; };
+    const screen = await render(<AuthenticationProvider dependencies={{ api, storage: new SessionStorage({ platform: 'web', webStorage: webStorage() }) }}><Probe /></AuthenticationProvider>);
+    await waitFor(() => expect(screen.getByText('unauthenticated:none')).toBeTruthy());
+    await act(async () => { await current?.login({ email: 'pending@example.test', password: 'test-password-not-usable' }, { deferAccessProjection: true }); });
+    expect(screen.getByText('authenticated:none')).toBeTruthy();
+    await act(async () => { await current?.refreshCapabilities(); });
+    expect(screen.getByText('authenticated:pending-onboarding')).toBeTruthy();
+  });
 });

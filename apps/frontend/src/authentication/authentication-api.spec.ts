@@ -20,6 +20,26 @@ describe('Feature 003 authentication API boundary', () => {
     ]));
   });
 
+  it('maps a successful refresh to replacement session material', async () => {
+    const fetcher = jest.fn().mockImplementation(() => Promise.resolve(response(200, issued, { 'cache-control': 'no-store' })));
+    const api = createAuthenticationApi({ apiBaseUrl: 'https://api.example.test/base/' }, fetcher);
+
+    await expect(api.refresh('test-refresh-not-usable')).resolves.toEqual({ kind: 'success', value: issued });
+    expect(fetcher.mock.calls[0]?.[0]).toBe('https://api.example.test/auth/refresh');
+    expect(fetcher.mock.calls[0]?.[1].headers.Authorization).toBeUndefined();
+  });
+  it('accepts only an explicit backend session projection and never derives roles from tokens', async () => {
+    const projected = { ...issued, accessToken: 'opaque.header.payload', access: { classification: 'pending-onboarding', requestId: '22222222-2222-4222-8222-222222222222', capabilities: ['registration.request.own.view'] } };
+    const api = createAuthenticationApi({ apiBaseUrl: 'https://api.example.test' }, jest.fn().mockResolvedValue(response(200, projected)));
+
+    await expect(api.login({ email: 'pending@example.test', password: 'test-password-not-usable' })).resolves.toEqual({ kind: 'success', value: projected });
+  });
+  it('preserves the backend-projected academy context used by academy routes', async () => {
+    const projected = { ...issued, access: { classification: 'product', academyId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', capabilities: ['registration.request.academy.list'] } };
+    const api = createAuthenticationApi({ apiBaseUrl: 'https://api.example.test' }, jest.fn().mockResolvedValue(response(200, projected)));
+
+    await expect(api.login({ email: 'academy@example.test', password: 'test-password-not-usable' })).resolves.toEqual({ kind: 'success', value: projected });
+  });
   it('sends login and activation JSON to the configured base URL and maps issued material', async () => {
     const fetcher = jest.fn().mockImplementation(() => Promise.resolve(response(200, issued, { 'cache-control': 'no-store' })));
     const api = createAuthenticationApi({ apiBaseUrl: 'https://api.example.test/base/' }, fetcher);

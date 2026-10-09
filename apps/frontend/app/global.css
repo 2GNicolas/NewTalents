@@ -1,3 +1,25 @@
+html,
+body,
+#root {
+  background-color: #030806;
+  min-height: 100%;
+}
+
+@supports (min-height: 100dvh) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+}
+
+html,
+body {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 /* Chrome and other WebKit password managers otherwise paint saved credentials white. */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,

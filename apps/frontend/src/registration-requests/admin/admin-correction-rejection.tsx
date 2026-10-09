@@ -1,0 +1,368 @@
+import { useState } from "react";
+import {
+  ImageBackground,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
+
+import { LiquidGlassPanel } from "../../design/components/liquid-glass-panel";
+import { authTokens } from "../../design/tokens";
+import { administratorRouteBackgroundStyle } from "../../administrator/shell/administrator-shell";
+import { Brand } from "../components/registration-journey";
+
+type Correction = Readonly<{
+  safeReason: string;
+  correctionTargets: readonly string[];
+}>;
+type Rejection = Readonly<{ safeReason: string }>;
+
+export function AdminCorrectionRejection({
+  applicantLabel,
+  evidenceCategories,
+  onBack,
+  onCorrection,
+  onReject,
+  busy = false,
+  error,
+  previewMode,
+}: Readonly<{
+  applicantLabel: string;
+  evidenceCategories: readonly string[];
+  onBack: () => void;
+  onCorrection: (value: Correction) => void;
+  onReject: (value: Rejection) => void;
+  busy?: boolean;
+  error?: string;
+  previewMode?: "desktop" | "mobile";
+}>) {
+  const desktop = previewMode
+    ? previewMode === "desktop"
+    : useWindowDimensions().width >= authTokens.breakpoints.desktop;
+  const [reason, setReason] = useState("");
+  const [targets, setTargets] = useState<readonly string[]>([]);
+  const [safeConfirmed, setSafeConfirmed] = useState(false);
+  const [rejectConfirmation, setRejectConfirmation] = useState(false);
+  const valid =
+    reason.trim().length > 0 && reason.length <= 1000 && safeConfirmed;
+  const toggleTarget = (category: string) =>
+    setTargets((current) =>
+      current.includes(category)
+        ? current.filter((item) => item !== category)
+        : [...current, category],
+    );
+  return (
+    <ImageBackground
+      source={require("../../../assets/authentication/liquid-emerald-abstract-v1.png")}
+      style={[styles.background, administratorRouteBackgroundStyle]}
+      resizeMode="cover"
+    >
+      <View style={styles.scrim} />
+      <ScrollView
+        contentContainerStyle={[
+          styles.page,
+          previewMode === "mobile" && styles.mobile,
+        ]}
+      >
+        <View style={styles.top}>
+          <Brand dense />
+          <Pressable
+            accessibilityRole="button"
+            onPress={onBack}
+            style={styles.touch}
+          >
+            <Text style={styles.link}>← Volver a la solicitud</Text>
+          </Pressable>
+        </View>
+        <Text accessibilityRole="header" style={styles.title}>
+          Decisión sobre la solicitud
+        </Text>
+        <Text style={styles.subtitle}>
+          Solicita únicamente cambios necesarios o registra un rechazo final con
+          una explicación segura.
+        </Text>
+        <View style={[styles.columns, desktop && styles.desktopColumns]}>
+          <LiquidGlassPanel style={styles.card}>
+            <Text style={styles.cardTitle}>Solicitar corrección</Text>
+            <Text style={styles.body}>
+              Selecciona la información que debe corregirse.
+            </Text>
+            <View style={styles.targets}>
+              {evidenceCategories.map((category) => (
+                <Pressable
+                  key={category}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Seleccionar ${label(category)}`}
+                  accessibilityState={{ selected: targets.includes(category) }}
+                  onPress={() => toggleTarget(category)}
+                  style={[
+                    styles.target,
+                    targets.includes(category) && styles.selected,
+                  ]}
+                >
+                  <Text style={styles.targetText}>
+                    {targets.includes(category) ? "✓ " : ""}
+                    {label(category)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.label}>
+              Motivo visible para la persona solicitante
+            </Text>
+            <TextInput
+              accessibilityLabel="Motivo visible para la persona solicitante"
+              multiline
+              maxLength={1000}
+              value={reason}
+              onChangeText={setReason}
+              style={styles.input}
+              placeholder="Describe qué debe corregir y cómo puede hacerlo."
+              placeholderTextColor="#789086"
+            />
+            <Text style={styles.counter}>{reason.length}/1000</Text>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityLabel="Confirmo que el mensaje no contiene información privada interna"
+              accessibilityState={{ checked: safeConfirmed }}
+              onPress={() => setSafeConfirmed((value) => !value)}
+              style={styles.check}
+            >
+              <Text style={styles.checkBox}>{safeConfirmed ? "✓" : ""}</Text>
+              <Text style={styles.body}>
+                Confirmo que el mensaje no contiene candidatos, coincidencias,
+                huellas ni razones internas.
+              </Text>
+            </Pressable>
+          </LiquidGlassPanel>
+          <LiquidGlassPanel style={styles.card}>
+            <Text style={styles.cardTitle}>
+              Vista previa para la persona solicitante
+            </Text>
+            <Text style={styles.previewName}>{applicantLabel}</Text>
+            <Text style={styles.previewReason}>
+              {reason.trim() ||
+                "Aquí aparecerá el motivo que recibirá la persona solicitante."}
+            </Text>
+            {targets.length ? (
+              <Text style={styles.body}>
+                Debe corregir: {targets.map(label).join(", ")}.
+              </Text>
+            ) : null}
+          </LiquidGlassPanel>
+        </View>
+        {error ? (
+          <Text accessibilityLiveRegion="assertive" style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
+        <View style={styles.timeline}>
+          <Text style={styles.cardTitle}>Historial operativo</Text>
+          <View style={styles.step}>
+            <Text style={styles.done}>✓</Text>
+            <Text style={styles.stepText}>Información revisada</Text>
+          </View>
+          <View style={styles.step}>
+            <Text style={styles.current}>2</Text>
+            <Text style={styles.stepText}>Decisión preparada</Text>
+          </View>
+          <View style={styles.step}>
+            <Text style={styles.pending}>3</Text>
+            <Text style={styles.stepText}>Respuesta enviada</Text>
+          </View>
+        </View>
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{
+              disabled: !valid || targets.length === 0 || busy,
+            }}
+            disabled={!valid || targets.length === 0 || busy}
+            onPress={() =>
+              onCorrection({
+                safeReason: reason.trim(),
+                correctionTargets: targets,
+              })
+            }
+            style={[
+              styles.primary,
+              (!valid || !targets.length || busy) && styles.disabled,
+            ]}
+          >
+            <Text style={styles.primaryText}>Solicitar corrección</Text>
+          </Pressable>
+        </View>
+        <LiquidGlassPanel style={styles.danger}>
+          <Text style={styles.dangerTitle}>Rechazo final</Text>
+          <Text style={styles.body}>
+            Esta decisión es definitiva y no crea ningún resultado de registro.
+          </Text>
+          {!rejectConfirmation ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !valid || busy }}
+              disabled={!valid || busy}
+              onPress={() => setRejectConfirmation(true)}
+              style={styles.reject}
+            >
+              <Text style={styles.rejectText}>Rechazar solicitud</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.confirm}>
+              <Text style={styles.dangerText}>
+                Confirma la decisión final. Esta acción no se puede deshacer.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onReject({ safeReason: reason.trim() })}
+                style={styles.rejectSolid}
+              >
+                <Text style={styles.rejectSolidText}>
+                  Confirmar rechazo definitivo
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </LiquidGlassPanel>
+      </ScrollView>
+    </ImageBackground>
+  );
+}
+
+const evidenceLabels: Record<string, string> = {
+  IDENTITY_FRONT: "Documento de identidad · frente",
+  IDENTITY_BACK: "Documento de identidad · reverso",
+  MINOR_CIVIL_IDENTITY: "Registro civil del menor",
+  REPRESENTATION_AUTHORITY: "Autoridad de representación",
+  RUT: "RUT",
+  EXISTENCE_CERTIFICATE: "Certificado de existencia",
+  RESPONSIBLE_AUTHORITY: "Autoridad del responsable",
+  OPERATION_PROOF: "Prueba de operación",
+  ADULT_AUTHORIZATION: "Autorización de la persona adulta",
+  ACADEMY_ACCOUNT_AUTHORIZATION: "Autorización de cuenta de academia",
+};
+function label(value: string) {
+  return (
+    evidenceLabels[value] ??
+    value
+      .replaceAll("_", " ")
+      .toLowerCase()
+      .replace(/^./, (letter) => letter.toUpperCase())
+  );
+}
+const styles = StyleSheet.create({
+  background: administratorRouteBackgroundStyle,
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,12,8,.5)" },
+  page: {
+    alignSelf: "center",
+    gap: 18,
+    maxWidth: 1180,
+    padding: 28,
+    width: "100%",
+  },
+  mobile: { maxWidth: 430 },
+  top: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  touch: { justifyContent: "center", minHeight: 48 },
+  link: { color: "#c7ff2e", fontWeight: "800" },
+  title: { color: "#f5f7ef", fontSize: 40, fontWeight: "900" },
+  subtitle: { color: "#c7d3cc", fontSize: 16, lineHeight: 24 },
+  columns: { gap: 18 },
+  desktopColumns: { alignItems: "flex-start", flexDirection: "row" },
+  card: { flex: 1, gap: 14, padding: 20 },
+  cardTitle: { color: "#f5f7ef", fontSize: 21, fontWeight: "900" },
+  body: { color: "#b9cac0", fontSize: 14, lineHeight: 21 },
+  targets: { gap: 8 },
+  target: {
+    borderColor: "rgba(210,255,226,.25)",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 48,
+    padding: 12,
+  },
+  selected: { borderColor: "#c7ff2e" },
+  targetText: { color: "#eef6f0", fontWeight: "700" },
+  label: { color: "#dbe7df", fontWeight: "800" },
+  input: {
+    backgroundColor: "rgba(2,18,12,.72)",
+    borderColor: "rgba(210,255,226,.3)",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#fff",
+    minHeight: 132,
+    padding: 14,
+    textAlignVertical: "top",
+  },
+  counter: { color: "#93a79c", textAlign: "right" },
+  check: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 48 },
+  checkBox: {
+    borderColor: "#75e7a7",
+    borderRadius: 4,
+    borderWidth: 1,
+    color: "#c7ff2e",
+    height: 24,
+    textAlign: "center",
+    width: 24,
+  },
+  previewName: { color: "#75e7a7", fontSize: 16, fontWeight: "900" },
+  previewReason: {
+    backgroundColor: "rgba(2,18,12,.6)",
+    borderRadius: 8,
+    color: "#f5f7ef",
+    lineHeight: 22,
+    minHeight: 120,
+    padding: 16,
+  },
+  timeline: {
+    borderTopColor: "rgba(210,255,226,.2)",
+    borderTopWidth: 1,
+    gap: 12,
+    paddingTop: 22,
+  },
+  step: { alignItems: "center", flexDirection: "row", gap: 12 },
+  done: { color: "#c7ff2e", fontWeight: "900" },
+  current: { color: "#ffd070", fontWeight: "900" },
+  pending: { color: "#91a39a", fontWeight: "900" },
+  stepText: { color: "#f5f7ef", fontWeight: "700" },
+  actions: { alignItems: "flex-end" },
+  primary: {
+    alignItems: "center",
+    backgroundColor: "#c7ff2e",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 54,
+    paddingHorizontal: 24,
+  },
+  primaryText: { color: "#06150f", fontWeight: "900" },
+  disabled: { opacity: 0.45 },
+  danger: { borderColor: "rgba(255,95,105,.5)", gap: 12, padding: 20 },
+  dangerTitle: { color: "#ff9ca4", fontSize: 20, fontWeight: "900" },
+  reject: {
+    alignItems: "center",
+    borderColor: "#ff717d",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 52,
+  },
+  rejectText: { color: "#ff9ca4", fontWeight: "900" },
+  confirm: { gap: 12 },
+  dangerText: { color: "#ffd0d4", fontWeight: "700" },
+  rejectSolid: {
+    alignItems: "center",
+    backgroundColor: "#d94350",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 52,
+  },
+  rejectSolidText: { color: "#fff", fontWeight: "900" },
+  error: { color: "#ffb0b6", fontWeight: "800" },
+});

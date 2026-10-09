@@ -1,0 +1,209 @@
+openapi: 3.1.0
+info:
+  title: Feature 008 Administrator passport match allowances
+  version: 0.1.0
+  description: Planning contract only. All operations require live Administrator authorization; responses use Cache-Control no-store.
+paths:
+  /admin/passports:
+    get:
+      operationId: listAdministratorPassports
+      summary: Cursor-page all authorized passports, regardless of custody or lifecycle state
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Authorized card page
+          headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/PassportPage'}}}
+        '403': {$ref: '#/components/responses/Denied'}
+  /admin/passports/{passportId}:
+    get:
+      operationId: getAdministratorPassport
+      summary: Safe passport detail composed with existing permitted sections
+      parameters: [{$ref: '#/components/parameters/PassportId'}]
+      responses:
+        '200':
+          description: Authorized detail
+          headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/PassportDetail'}}}
+        '404': {$ref: '#/components/responses/Hidden'}
+  /admin/passports/{passportId}/match-allowance:
+    get:
+      operationId: getPassportMatchAllowance
+      summary: Read current and pending allowance without usage counts
+      parameters: [{$ref: '#/components/parameters/PassportId'}]
+      responses:
+        '200':
+          description: Authorized projection; null configuration means not configured
+          headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/AllowanceEnvelope'}}}
+        '404': {$ref: '#/components/responses/Hidden'}
+    put:
+      operationId: confirmPassportMatchAllowance
+      summary: Explicitly confirmed create or update; no selected start date is accepted
+      parameters: [{$ref: '#/components/parameters/PassportId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/AllowanceCommand'}}}
+      responses:
+        '200':
+          description: Confirmed or same-intention idempotent replay
+          headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/AllowanceEnvelope'}}}
+        '404': {$ref: '#/components/responses/Hidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Invalid'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /admin/passports/{passportId}/match-allowance/history:
+    get:
+      operationId: listPassportMatchAllowanceHistory
+      summary: Cursor-page confirmed revisions only
+      parameters:
+        - $ref: '#/components/parameters/PassportId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Authorized audit page
+          headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/RevisionPage'}}}
+        '404': {$ref: '#/components/responses/Hidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+components:
+  parameters:
+    PassportId: {name: passportId, in: path, required: true, schema: {type: string, format: uuid}}
+    Limit: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
+    Cursor: {name: cursor, in: query, schema: {type: string}}
+  responses:
+    Denied:
+      description: Collection access denied
+      headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/SafeError'}}}
+    Hidden:
+      description: Missing and unauthorized direct IDs are indistinguishable
+      headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/SafeError'}}}
+    Conflict:
+      description: Stale version, Colombia day rollover, or idempotency conflict; refresh before new intention
+      headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/SafeError'}}}
+    Invalid:
+      description: Closed input or ineligible passport; no partial write
+      headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/SafeError'}}}
+    Unavailable:
+      description: Temporary allowance service failure; no partial write
+      headers: {Cache-Control: {schema: {type: string, const: no-store}}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/SafeError'}}}
+  schemas:
+    Cadence: {type: string, enum: [MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL]}
+    Date: {type: string, format: date, pattern: '^\d{4}-\d{2}-\d{2}$'}
+    PassportCard:
+      type: object
+      additionalProperties: false
+      required: [id, playerLabel, maskedReference, state, canConfigure]
+      properties:
+        id: {type: string, format: uuid}
+        playerLabel: {type: string}
+        maskedReference: {type: string}
+        state: {type: string}
+        canConfigure: {type: boolean}
+    PassportPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/PassportCard'}}
+        nextCursor: {type: [string, 'null']}
+    PassportDetail:
+      type: object
+      additionalProperties: false
+      required: [passport, allowance]
+      properties:
+        passport: {$ref: '#/components/schemas/PassportCard'}
+        allowance: {$ref: '#/components/schemas/AllowanceEnvelope'}
+        existingSections:
+          type: array
+          description: Safe links to existing authorized passport/custody sections; their current contracts remain unchanged
+          items:
+            type: object
+            additionalProperties: false
+            required: [kind, label, href]
+            properties:
+              kind: {type: string, enum: [PASSPORT, REQUEST, DOSSIER, CUSTODY]}
+              label: {type: string}
+              href: {type: string}
+    Period:
+      type: object
+      additionalProperties: false
+      required: [start, endExclusive]
+      properties:
+        start: {$ref: '#/components/schemas/Date'}
+        endExclusive: {$ref: '#/components/schemas/Date'}
+    Rule:
+      type: object
+      additionalProperties: false
+      required: [cadence, matchLimit, effectiveOn]
+      properties:
+        cadence: {$ref: '#/components/schemas/Cadence'}
+        matchLimit: {type: integer, minimum: 1, maximum: 9007199254740991}
+        effectiveOn: {$ref: '#/components/schemas/Date'}
+    Allowance:
+      type: object
+      additionalProperties: false
+      required: [version, activatedOn, currentRule, currentPeriod, pendingRule, lastModifiedAt]
+      properties:
+        version: {type: integer, minimum: 1}
+        activatedOn: {$ref: '#/components/schemas/Date'}
+        currentRule: {$ref: '#/components/schemas/Rule'}
+        currentPeriod: {$ref: '#/components/schemas/Period'}
+        pendingRule: {oneOf: [{$ref: '#/components/schemas/Rule'}, {type: 'null'}]}
+        lastModifiedAt: {type: string, format: date-time}
+    AllowanceEnvelope:
+      type: object
+      additionalProperties: false
+      required: [configuration, colombiaToday]
+      properties:
+        configuration: {oneOf: [{$ref: '#/components/schemas/Allowance'}, {type: 'null'}]}
+        colombiaToday: {$ref: '#/components/schemas/Date'}
+    AllowanceCommand:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, idempotencyKey, cadence, matchLimit]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        idempotencyKey: {type: string, format: uuid}
+        cadence: {$ref: '#/components/schemas/Cadence'}
+        matchLimit: {type: integer, minimum: 1, maximum: 9007199254740991}
+        expectedActivationDate: {$ref: '#/components/schemas/Date', description: Required only for initial creation; preview check, never chosen start date}
+      allOf:
+        - if: {properties: {expectedVersion: {const: 0}}, required: [expectedVersion]}
+          then: {required: [expectedActivationDate]}
+          else: {not: {required: [expectedActivationDate]}}
+    Revision:
+      type: object
+      additionalProperties: false
+      required: [sequence, confirmedAt, actorLabel, effectiveOn, previousRule, newRule]
+      properties:
+        sequence: {type: integer, minimum: 1}
+        confirmedAt: {type: string, format: date-time}
+        actorLabel: {type: string, description: Generic or allowed Administrator label; no private identifier}
+        effectiveOn: {$ref: '#/components/schemas/Date'}
+        previousRule: {oneOf: [{$ref: '#/components/schemas/Rule'}, {type: 'null'}]}
+        newRule: {$ref: '#/components/schemas/Rule'}
+    RevisionPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Revision'}}
+        nextCursor: {type: [string, 'null']}
+    SafeError:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code: {type: string, enum: [ACCESS_DENIED, NOT_FOUND, ALLOWANCE_CONFLICT, IDEMPOTENCY_CONFLICT, ACTIVATION_DATE_CHANGED, INVALID_ALLOWANCE, PASSPORT_INELIGIBLE, ALLOWANCE_UNAVAILABLE]}
+        message: {type: string}
+        current: {$ref: '#/components/schemas/AllowanceEnvelope', description: Present only for an authorized version or idempotency conflict; refresh before a new confirmation}

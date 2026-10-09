@@ -1,0 +1,509 @@
+openapi: 3.1.0
+info:
+  title: New Talents Administrator Operations and Passport Custody API
+  version: 0.1.0
+  description: >-
+    Additive Feature 007 contract. Existing Feature 006 review and decision
+    operations remain governed by registration-requests.openapi.yaml.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: Administrator requests
+  - name: Dossiers
+  - name: Passport custody
+  - name: Analyst passports
+paths:
+  /admin/registration-requests/operations:
+    get:
+      tags: [Administrator requests]
+      operationId: getRegistrationOperationsWorkspace
+      summary: Read the five minimum operational groups without changing request behavior
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/RequestType'
+      responses:
+        '200':
+          description: Authorized grouped projection
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OperationalWorkspaceEnvelope'}
+        '401': {$ref: '#/components/responses/AuthenticationFailed'}
+        '403': {$ref: '#/components/responses/SafeDenied'}
+  /admin/registration-requests/{requestId}/review-progress:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    patch:
+      tags: [Administrator requests]
+      operationId: updateRegistrationReviewProgress
+      summary: Record presentation-only review progress for the current request version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReviewProgressCommand'}
+      responses:
+        '200':
+          description: Current operational projection
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OperationalRequestEnvelope'}
+        '404': {$ref: '#/components/responses/SafeNotFound'}
+        '409': {$ref: '#/components/responses/VersionConflict'}
+  /admin/dossiers:
+    get:
+      tags: [Dossiers]
+      operationId: listConfirmedDossiers
+      summary: List authorized existing confirmed dossiers only
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Query'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/DossierStatus'}
+        - $ref: '#/components/parameters/RequestType'
+        - name: confirmedFrom
+          in: query
+          schema: {type: string, format: date}
+        - name: confirmedTo
+          in: query
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          description: Stable page ordered by confirmation time and dossier id descending
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DossierPageEnvelope'}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '401': {$ref: '#/components/responses/AuthenticationFailed'}
+        '403': {$ref: '#/components/responses/SafeDenied'}
+  /admin/dossiers/{dossierId}:
+    parameters:
+      - $ref: '#/components/parameters/DossierId'
+    get:
+      tags: [Dossiers]
+      operationId: getConfirmedDossier
+      summary: Read one minimum confirmed dossier projection
+      responses:
+        '200':
+          description: Read-only dossier detail
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DossierDetailEnvelope'}
+        '404': {$ref: '#/components/responses/SafeNotFound'}
+  /admin/passport-custody/analysts:
+    get:
+      tags: [Passport custody]
+      operationId: listEligibleAnalysts
+      summary: List active eligible Analysts with live custody workloads
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Query'
+      responses:
+        '200':
+          description: Eligible Analyst page
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AnalystPageEnvelope'}
+        '403': {$ref: '#/components/responses/SafeDenied'}
+  /admin/passport-custody/passports:
+    get:
+      tags: [Passport custody]
+      operationId: listCustodyPassports
+      summary: List active basic passports by current custody
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Query'
+        - name: assignment
+          in: query
+          schema: {type: string, enum: [ALL, UNASSIGNED, ASSIGNED], default: ALL}
+        - name: analystId
+          in: query
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Stable page of minimum passport custody summaries
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CustodyPassportPageEnvelope'}
+        '400': {$ref: '#/components/responses/ValidationError'}
+        '403': {$ref: '#/components/responses/SafeDenied'}
+  /admin/passport-custody/passports/{passportId}:
+    parameters:
+      - $ref: '#/components/parameters/PassportId'
+    get:
+      tags: [Passport custody]
+      operationId: getPassportCustodyDetail
+      summary: Read passport, current custody, links and safe custody history
+      responses:
+        '200':
+          description: Authorized custody detail
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CustodyPassportDetailEnvelope'}
+        '404': {$ref: '#/components/responses/SafeNotFound'}
+  /admin/passport-custody/passports/{passportId}/assign:
+    parameters:
+      - $ref: '#/components/parameters/PassportId'
+    post:
+      tags: [Passport custody]
+      operationId: assignPassportCustody
+      summary: Confirm initial Analyst custody
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AssignCustodyCommand'}
+      responses:
+        '200': {$ref: '#/components/responses/CustodyApplied'}
+        '404': {$ref: '#/components/responses/SafeNotFound'}
+        '409': {$ref: '#/components/responses/CustodyConflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /admin/passport-custody/passports/{passportId}/change:
+    parameters:
+      - $ref: '#/components/parameters/PassportId'
+    post:
+      tags: [Passport custody]
+      operationId: changePassportCustody
+      summary: Confirm replacement of the current Analyst
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedVersion, idempotencyKey, reason, analystIdentityId]
+              properties:
+                expectedVersion: {type: integer, minimum: 0}
+                idempotencyKey: {type: string, format: uuid}
+                reason: {type: string, minLength: 1, maxLength: 500}
+                analystIdentityId: {type: string, format: uuid}
+      responses:
+        '200': {$ref: '#/components/responses/CustodyApplied'}
+        '404': {$ref: '#/components/responses/SafeNotFound'}
+        '409': {$ref: '#/components/responses/CustodyConflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /admin/passport-custody/passports/{passportId}/remove:
+    parameters:
+      - $ref: '#/components/parameters/PassportId'
+    post:
+      tags: [Passport custody]
+      operationId: removePassportCustody
+      summary: Confirm removal of current Analyst custody
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RemoveCustodyCommand'}
+      responses:
+        '200': {$ref: '#/components/responses/CustodyApplied'}
+        '404': {$ref: '#/components/responses/SafeNotFound'}
+        '409': {$ref: '#/components/responses/CustodyConflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /analyst/passports:
+    get:
+      tags: [Analyst passports]
+      operationId: listCurrentAnalystPassports
+      summary: List only passports under the caller's active custody
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Current authorized Analyst page
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CustodyPassportPageEnvelope'}
+        '403': {$ref: '#/components/responses/SafeDenied'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  headers:
+    NoStore: {schema: {type: string, const: no-store}}
+  parameters:
+    Cursor: {name: cursor, in: query, schema: {type: string, minLength: 1, maxLength: 500}}
+    Limit: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
+    Query: {name: query, in: query, schema: {type: string, minLength: 1, maxLength: 120}}
+    RequestType: {name: requestType, in: query, schema: {$ref: '#/components/schemas/RegistrationRequestType'}}
+    RequestId: {name: requestId, in: path, required: true, schema: {type: string, format: uuid}}
+    DossierId: {name: dossierId, in: path, required: true, schema: {type: string, format: uuid}}
+    PassportId: {name: passportId, in: path, required: true, schema: {type: string, format: uuid}}
+  schemas:
+    RegistrationRequestType:
+      type: string
+      enum: [PERSONAL_ADULT, REPRESENTED_MINOR, FORMAL_ACADEMY, NATURAL_PERSON_ACADEMY, ADDITIONAL_ACADEMY_ACCOUNT, ACADEMY_ADULT_PLAYER, ACADEMY_MINOR_PLAYER]
+    OperationalGroup:
+      type: string
+      enum: [NEW, CONTINUE_REVIEW, REQUIRES_CORRECTION, READY_FOR_DECISION, WAITING_EVIDENCE_DELETION]
+    OperationalRequest:
+      type: object
+      additionalProperties: false
+      required: [requestId, requestVersion, maskedReference, displayLabel, requestType, operationalGroup, relevantAt, nextAction]
+      properties:
+        requestId: {type: string, format: uuid}
+        requestVersion: {type: integer, minimum: 0}
+        maskedReference: {type: string}
+        displayLabel: {type: string, maxLength: 180}
+        requestType: {$ref: '#/components/schemas/RegistrationRequestType'}
+        operationalGroup: {$ref: '#/components/schemas/OperationalGroup'}
+        relevantAt: {type: string, format: date-time}
+        nextAction: {type: string, enum: [REVIEW, CONTINUE, VIEW_CORRECTION, DECIDE, VIEW_DELETION]}
+    OperationalGroupView:
+      type: object
+      additionalProperties: false
+      required: [group, total, items]
+      properties:
+        group: {$ref: '#/components/schemas/OperationalGroup'}
+        total: {type: integer, minimum: 0}
+        items: {type: array, items: {$ref: '#/components/schemas/OperationalRequest'}}
+    OperationalWorkspaceEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [groups]
+          properties:
+            groups: {type: array, minItems: 5, maxItems: 5, items: {$ref: '#/components/schemas/OperationalGroupView'}}
+    OperationalRequestEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/OperationalRequest'}}
+    ReviewProgressCommand:
+      type: object
+      additionalProperties: false
+      required: [expectedRequestVersion, stage]
+      properties:
+        expectedRequestVersion: {type: integer, minimum: 0}
+        stage: {type: string, enum: [OPENED, REVIEWED]}
+    DossierStatus:
+      type: string
+      enum: [CONFIRMED, DELETION_PENDING, RECOVERY_REQUIRED, APPROVED]
+    SafeLink:
+      type: object
+      additionalProperties: false
+      required: [id, maskedReference, status, available]
+      properties:
+          id: {type: string, format: uuid}
+          maskedReference: {type: string}
+          displayLabel: {type: string, maxLength: 180}
+          status: {type: string}
+        available: {type: boolean}
+    PassportLink:
+      oneOf:
+        - $ref: '#/components/schemas/SafeLink'
+        - type: object
+          additionalProperties: false
+          required: [notApplicable]
+          properties: {notApplicable: {type: boolean, const: true}}
+    DossierSummary:
+      type: object
+      additionalProperties: false
+      required: [dossierId, dossierName, maskedReference, displayLabel, status, confirmedAt, requestType, originRequest, linkedPassport]
+      properties:
+        dossierId: {type: string, format: uuid}
+        dossierName: {type: [string, 'null'], minLength: 1, maxLength: 180}
+        maskedReference: {type: string}
+        displayLabel: {type: string, maxLength: 180}
+        status: {$ref: '#/components/schemas/DossierStatus'}
+        confirmedAt: {type: string, format: date-time}
+        requestType: {$ref: '#/components/schemas/RegistrationRequestType'}
+        originRequest: {$ref: '#/components/schemas/SafeLink'}
+        linkedPassport: {$ref: '#/components/schemas/PassportLink'}
+    ConfirmationHistoryEntry:
+      type: object
+      additionalProperties: false
+      required: [at, action, actorLabel]
+      properties:
+        at: {type: string, format: date-time}
+        action: {type: string, enum: [DOSSIER_CONFIRMED, EVIDENCE_DELETION_VERIFIED, APPROVAL_FINALIZED]}
+        actorLabel: {type: string, enum: [ADMINISTRATOR, SYSTEM]}
+    DossierDetail:
+      type: object
+      additionalProperties: false
+      required: [dossierId, dossierName, maskedReference, displayLabel, status, confirmedAt, requestType, originRequest, linkedPassport, confirmationHistory]
+      properties:
+        dossierId: {type: string, format: uuid}
+        dossierName: {type: [string, 'null'], minLength: 1, maxLength: 180}
+        maskedReference: {type: string}
+        displayLabel: {type: string, maxLength: 180}
+        status: {$ref: '#/components/schemas/DossierStatus'}
+        confirmedAt: {type: string, format: date-time}
+        requestType: {$ref: '#/components/schemas/RegistrationRequestType'}
+        originRequest: {$ref: '#/components/schemas/SafeLink'}
+        linkedPassport: {$ref: '#/components/schemas/PassportLink'}
+        confirmationHistory: {type: array, items: {$ref: '#/components/schemas/ConfirmationHistoryEntry'}}
+    Page:
+      type: object
+      additionalProperties: false
+      required: [hasMore]
+      properties:
+        hasMore: {type: boolean}
+        nextCursor: {type: string}
+    DossierPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/DossierSummary'}}
+        pagination: {$ref: '#/components/schemas/Page'}
+    DossierDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/DossierDetail'}}
+    AnalystSummary:
+      type: object
+      additionalProperties: false
+      required: [identityId, displayLabel, activeCustodyCount]
+      properties:
+        identityId: {type: string, format: uuid}
+        displayLabel: {type: string, maxLength: 120}
+        activeCustodyCount: {type: integer, minimum: 0}
+    AnalystPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/AnalystSummary'}}
+        pagination: {$ref: '#/components/schemas/Page'}
+    CustodyAction:
+      type: string
+      enum: [ASSIGN, CHANGE, REMOVE]
+    CustodySummary:
+      type: object
+      additionalProperties: false
+      required: [state, version]
+      properties:
+        state: {type: string, enum: [UNASSIGNED, ASSIGNED]}
+        version: {type: integer, minimum: 0}
+        analyst: {$ref: '#/components/schemas/AnalystSummary'}
+        assignedAt: {type: string, format: date-time}
+    CustodyPassportSummary:
+      type: object
+      additionalProperties: false
+      required: [passportId, maskedReference, displayLabel, lifecycleState, enrichmentStatus, custody, capabilities]
+      properties:
+        passportId: {type: string, format: uuid}
+        maskedReference: {type: string}
+        displayLabel: {type: string, maxLength: 180}
+        lifecycleState: {type: string, enum: [ACTIVE]}
+        enrichmentStatus: {type: string, enum: [AWAITING_ANALYST_ENRICHMENT]}
+        academyLabel: {type: string, maxLength: 180}
+        custody: {$ref: '#/components/schemas/CustodySummary'}
+        capabilities: {type: array, uniqueItems: true, items: {$ref: '#/components/schemas/CustodyAction'}}
+    CustodyHistoryEntry:
+      type: object
+      additionalProperties: false
+      required: [eventId, at, action, actorLabel]
+      properties:
+        eventId: {type: string, format: uuid}
+        at: {type: string, format: date-time}
+        action: {type: string, enum: [ASSIGNED, CHANGED, REMOVED]}
+        actorLabel: {type: string, maxLength: 120}
+        previousAnalystLabel: {type: string, maxLength: 120}
+        nextAnalystLabel: {type: string, maxLength: 120}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    CustodyPassportDetail:
+      type: object
+      additionalProperties: false
+      required: [passportId, maskedReference, displayLabel, lifecycleState, enrichmentStatus, custody, capabilities, originRequest, linkedDossier, history]
+      properties:
+        passportId: {type: string, format: uuid}
+        maskedReference: {type: string}
+        displayLabel: {type: string, maxLength: 180}
+        lifecycleState: {type: string, enum: [ACTIVE]}
+        enrichmentStatus: {type: string, enum: [AWAITING_ANALYST_ENRICHMENT]}
+        academyLabel: {type: string, maxLength: 180}
+        custody: {$ref: '#/components/schemas/CustodySummary'}
+        capabilities: {type: array, uniqueItems: true, items: {$ref: '#/components/schemas/CustodyAction'}}
+        originRequest: {$ref: '#/components/schemas/SafeLink'}
+        linkedDossier: {$ref: '#/components/schemas/SafeLink'}
+        history: {type: array, items: {$ref: '#/components/schemas/CustodyHistoryEntry'}}
+    CustodyPassportPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/CustodyPassportSummary'}}
+        pagination: {$ref: '#/components/schemas/Page'}
+    CustodyPassportDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties: {data: {$ref: '#/components/schemas/CustodyPassportDetail'}}
+    AssignCustodyCommand:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, idempotencyKey, analystIdentityId]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        idempotencyKey: {type: string, format: uuid}
+        analystIdentityId: {type: string, format: uuid}
+    RemoveCustodyCommand:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, idempotencyKey, reason]
+      properties:
+        expectedVersion: {type: integer, minimum: 0}
+        idempotencyKey: {type: string, format: uuid}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+    ConflictEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message, current]
+      properties:
+        code: {type: string, enum: [CUSTODY_CONFLICT, IDEMPOTENCY_CONFLICT]}
+        message: {type: string}
+        current: {$ref: '#/components/schemas/CustodySummary'}
+  responses:
+    CustodyApplied:
+      description: Applied once or replayed idempotently
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/CustodyPassportDetailEnvelope'}
+    CustodyConflict:
+      description: Recoverable stale state or idempotency conflict
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ConflictEnvelope'}
+    AuthenticationFailed:
+      description: Authentication required
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    SafeDenied:
+      description: Access denied without protected resource disclosure
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    SafeNotFound:
+      description: Missing or unauthorized resource, indistinguishable
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    VersionConflict:
+      description: Request version no longer current
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
+    ValidationError:
+      description: Closed input validation failed
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}
