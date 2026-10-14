@@ -19,8 +19,14 @@ describe('AuthenticationService', () => {
     const service = new AuthenticationService({ authenticationCredential: { findUnique: async () => ({ identityId: '11111111-1111-4111-8111-111111111111', passwordHash: 'hash', status: 'ACTIVE', identity: { status: 'ACTIVE', roleAssignments: [{ role: 'ACADEMY_USER' }], memberships: [{ academyId, status: 'ACTIVE' }], registrationApplicantAccesses: [] } }) } } as never, { verifyPassword: async () => true } as never, { throttled: async () => false, failed: async () => undefined, succeeded: async () => undefined } as never, { create: async () => 'session' } as never, { issueAccessToken: async () => 'access' } as never, { issue: async () => 'refresh' } as never);
     await expect(service.login({ email: 'academy@example.test', password: 'valid-password', source: { remoteAddress: '127.0.0.1' } })).resolves.toMatchObject({ outcome: 'authenticated', access: { classification: 'product', academyId, capabilities: expect.arrayContaining(['registration.request.academy.list', 'registration.request.academy.create-adult-player']) } });
   });
-  it('projects only the Administrator inbox entry capability without granting resource decisions', async () => {
+  it('projects Administrator workspace entry capabilities without granting resource decisions', async () => {
     const service = new AuthenticationService({ authenticationCredential: { findUnique: async () => ({ identityId: '11111111-1111-4111-8111-111111111111', passwordHash: 'hash', status: 'ACTIVE', identity: { status: 'ACTIVE', roleAssignments: [{ role: 'ADMINISTRATOR' }], registrationApplicantAccesses: [] } }) } } as never, { verifyPassword: async () => true } as never, { throttled: async () => false, failed: async () => undefined, succeeded: async () => undefined } as never, { create: async () => 'session' } as never, { issueAccessToken: async () => 'access' } as never, { issue: async () => 'refresh' } as never);
-    await expect(service.login({ email: 'admin@example.test', password: 'valid-password', source: { remoteAddress: '127.0.0.1' } })).resolves.toMatchObject({ outcome: 'authenticated', access: { classification: 'product', capabilities: ['registration.review.list'] } });
+    const result = await service.login({ email: 'admin@example.test', password: 'valid-password', source: { remoteAddress: '127.0.0.1' } });
+    expect(result).toMatchObject({ outcome: 'authenticated', access: { classification: 'product', capabilities: expect.arrayContaining([
+      'registration.review.list', 'registration.review.progress', 'registration.dossier.list',
+      'passport.custody.list', 'passport.allowance.list',
+    ]) } });
+    if (result.outcome !== 'authenticated') throw new Error('Expected authenticated Administrator');
+    expect(result.access.capabilities).not.toContain('registration.review.approve');
   });
 });

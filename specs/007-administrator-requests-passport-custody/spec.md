@@ -8,6 +8,8 @@
 
 **Input**: User description: "Rediseñar el módulo existente de solicitudes del Administrador y permitir la asignación, cambio y retiro de custodia de pasaportes aprobados a Analistas, sin modificar el comportamiento de registro y aprobación de Feature 006."
 
+**Decisión de autoridad del propietario (2026-10-14)**: El Administrador revisa el pasaporte `IN_REVIEW`, lo aprueba y luego lo activa mediante decisiones separadas. Solo después de la activación asigna manualmente la custodia de Analista. El Analista necesita custodia vigente para acceder a la revisión de su pasaporte `ACTIVE`; no decide la aprobación previa. La aprobación de solicitudes de Feature 006 conserva su propio contrato.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Gestionar solicitudes desde un espacio operativo (Priority: P1)

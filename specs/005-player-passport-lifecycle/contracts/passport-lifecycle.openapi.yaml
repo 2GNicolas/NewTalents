@@ -182,7 +182,7 @@ paths:
       - $ref: '#/components/parameters/PassportId'
     post:
       operationId: returnPassportForCorrection
-      summary: Return an in-review passport with a creator-safe reason
+      summary: Return an in-review passport as an authorized Administrator with a creator-safe reason
       requestBody:
         required: true
         content:
@@ -207,7 +207,7 @@ paths:
       - $ref: '#/components/parameters/PassportId'
     post:
       operationId: resolvePossibleDuplicate
-      summary: Resolve a private duplicate signal as an authorized Analyst
+      summary: Resolve a private duplicate signal as an authorized Administrator
       requestBody:
         required: true
         content:
@@ -232,7 +232,7 @@ paths:
       - $ref: '#/components/parameters/PassportId'
     post:
       operationId: approvePassport
-      summary: Approve an in-review passport with no unresolved duplicate signal
+      summary: Approve an in-review passport as an authorized Administrator with no unresolved duplicate signal
       requestBody:
         required: false
         content:

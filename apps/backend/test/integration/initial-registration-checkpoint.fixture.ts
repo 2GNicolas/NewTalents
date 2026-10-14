@@ -63,10 +63,11 @@ const cleanScanner: EvidenceMalwareScanner = {
 };
 
 function person(marker: string, minor = false) {
+  const numericDocument = BigInt(`0x${marker.slice(0, 12)}`).toString().slice(-9).padStart(9, '0');
   return {
     legalNames: minor ? 'Menor Sintetico' : 'Persona Sintetica', legalSurnames: marker,
-    documentType: minor ? 'TI' : 'CC', documentNumber: `${minor ? 'TI' : 'CC'}-${marker}`,
-    birthDate: minor ? '2014-01-15' : '1990-01-15', country: 'Colombia', city: 'Bogota',
+    documentType: minor ? 'TI' : 'CC', documentNumber: numericDocument,
+    birthDate: minor ? '2014-01-15' : '1990-01-15', country: 'CO', city: '11001',
   };
 }
 
@@ -79,7 +80,7 @@ export function checkpointPayload(type: InitialRequestType, marker = randomUUID(
   const responsible = { ...adult, phone: '+573001234567' };
   if (type === 'PERSONAL_ADULT') return { email, password, body: { credentials, person: adult, actingForSelf: true, consent } };
   if (type === 'REPRESENTED_MINOR') return { email, password, body: { credentials, representative: responsible, minor: person(marker, true), relationship: 'MOTHER', authorityDeclared: true, consent: { ...consent, representationAccepted: true, minorTreatmentAccepted: true } } };
-  const academy = { academyName: `Academia Sintetica ${marker}`, country: 'Colombia', city: 'Bogota', responsiblePerson: responsible };
+  const academy = { academyName: `Academia Sintetica ${marker}`, country: 'CO', city: '11001', responsiblePerson: responsible };
   if (type === 'FORMAL_ACADEMY') return { email, password, body: { credentials, academy, organizationType: 'SAS', nit: `900${marker.slice(0, 8)}`, authorityDeclared: true, consent } };
   return { email, password, body: { credentials, academy: { ...academy, trainingPlace: 'Sector norte' }, operationDeclared: true, proofCategories: ['PLACE_USE_AUTHORIZATION'], consent } };
 }

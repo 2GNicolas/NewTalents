@@ -189,7 +189,8 @@ describe('T104 sequential corrective PostgreSQL integration', () => {
 
   it('keeps audit immutable and limits duplicate events and protected details to authorized internal history', async () => {
     const analyst = await createPassportIdentity(prisma, 'ANALYST');
-    fixture.ids.identities.push(analyst);
+    const administrator = await createPassportIdentity(prisma, 'ADMINISTRATOR');
+    fixture.ids.identities.push(analyst, administrator);
     const protectedValues = ['T104-DOCUMENT-SECRET', 'T104-FINGERPRINT-SECRET', '75000000-0000-4000-8000-000000000099', 'T104-REPRESENTATIVE-SECRET'];
     const created = await prisma.passportLifecycleEvent.create({ data: { passportId: fixture.passports.adultSelf, actorIdentityId: fixture.identities.mixedUser, action: 'CREATED', outcome: 'APPLIED', resultingState: 'DRAFT', details: { documentNumber: protectedValues[0] } } });
     await prisma.passportPossibleDuplicateSignal.create({ data: { passportId: fixture.passports.adultSelf } });
@@ -199,12 +200,14 @@ describe('T104 sequential corrective PostgreSQL integration', () => {
     await expect(prisma.passportLifecycleEvent.update({ where: { id: created.id }, data: { outcome: 'FAILED' } })).rejects.toBeDefined();
     await expect(prisma.passportLifecycleEvent.delete({ where: { id: created.id } })).rejects.toBeDefined();
     const ordinaryStatus = await controller.status({ actor: { identityId: fixture.identities.mixedUser } } as never, fixture.passports.adultSelf, response() as never);
-    const internalStatus = await controller.status({ actor: { identityId: analyst } } as never, fixture.passports.adultSelf, response() as never);
+    const internalStatus = await controller.status({ actor: { identityId: administrator } } as never, fixture.passports.adultSelf, response() as never);
+    const deniedAnalystStatus = await controller.status({ actor: { identityId: analyst } } as never, fixture.passports.adultSelf, response() as never);
     const ordinary = await controller.history({ actor: { identityId: fixture.identities.mixedUser } } as never, fixture.passports.adultSelf, response() as never);
     const deniedInternal = await controller.internalHistory({ actor: { identityId: fixture.identities.mixedUser } } as never, fixture.passports.adultSelf, response() as never);
-    const internal = await controller.internalHistory({ actor: { identityId: analyst } } as never, fixture.passports.adultSelf, response() as never);
+    const internal = await controller.internalHistory({ actor: { identityId: administrator } } as never, fixture.passports.adultSelf, response() as never);
     expect(ordinaryStatus).not.toHaveProperty('possibleDuplicate');
     expect(internalStatus).toMatchObject({ possibleDuplicate: 'UNRESOLVED' });
+    expect(deniedAnalystStatus).toMatchObject({ code: 'passport_not_found' });
     expect(deniedInternal).toMatchObject({ code: 'passport_not_found' });
     expect('events' in ordinary && ordinary.events.map((event) => event.action)).toEqual(['CREATED']);
     expect('events' in internal && internal.events.map((event) => event.action)).toEqual(['CREATED', 'POSSIBLE_DUPLICATE_RESOLVED']);

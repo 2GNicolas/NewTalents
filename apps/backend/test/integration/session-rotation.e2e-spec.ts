@@ -44,7 +44,8 @@ describe('Feature 003 session rotation', () => {
       expect(rotation.accessToken.length).toBeGreaterThan(80);
       expect(rotation.expiresIn).toBe(900);
       expect(typeof rotation.refreshToken).toBe('string');
-      expect(rotation.access).toEqual({ classification: 'product', capabilities: [] });
+      // Session projection names the role capability; resource access still requires current custody.
+      expect(rotation.access).toEqual({ classification: 'product', capabilities: ['passport.review'] });
     }
     await expect(refreshes.rotate(raw)).resolves.toEqual({ outcome: 'denied' });
     expect(await sessions.validate(identityId, first)).toBe(false);

@@ -195,7 +195,7 @@ describe('Feature 005 passport lifecycle integration', () => {
       .expect((response) => expect(response.body).toMatchObject({ code: 'passport_not_found' }));
   });
 
-  it('completes the lifecycle from submission through activation and returns redacted history', async () => {
+  it('denies unassigned Analyst review and premature activation while retaining redacted history', async () => {
     await request(app.getHttpServer())
       .post(`/passports/${tutorPassportId}/submit`)
       .set('Authorization', `Bearer ${tutorToken}`)
@@ -208,27 +208,28 @@ describe('Feature 005 passport lifecycle integration', () => {
       .post(`/passports/${tutorPassportId}/approve`)
       .set('Authorization', `Bearer ${analystToken}`)
       .send({})
-      .expect(409)
-      .expect((response) => expect(response.body).toMatchObject({ code: 'unresolved_duplicate_signal' }));
+      .expect(403);
 
     await request(app.getHttpServer())
       .post(`/passports/${tutorPassportId}/possible-duplicate/resolve`)
       .set('Authorization', `Bearer ${analystToken}`)
       .send({ resolution: 'DIFFERENT_PLAYERS' })
-      .expect(200);
+      .expect(403);
 
     await request(app.getHttpServer())
       .post(`/passports/${tutorPassportId}/approve`)
       .set('Authorization', `Bearer ${analystToken}`)
       .send({})
-      .expect(200);
+      .expect(403);
 
     await request(app.getHttpServer())
       .post(`/passports/${tutorPassportId}/activate`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({})
-      .expect(200)
-      .expect((response) => expect(response.body.lifecycleState).toBe('ACTIVE'));
+      .expect(409);
+
+    expect((await prisma.playerPassport.findUniqueOrThrow({ where: { id: tutorPassportId } })).state).toBe('IN_REVIEW');
+    expect(await prisma.passportPossibleDuplicateSignal.count({ where: { passportId: tutorPassportId, status: 'UNRESOLVED' } })).toBe(1);
 
     const history = await request(app.getHttpServer())
       .get(`/passports/${tutorPassportId}/history`)

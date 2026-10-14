@@ -22,6 +22,7 @@ const registrationPermissions = [
   'registration.request.academy.create-adult-player',
   'registration.request.academy.create-minor-player',
   'registration.review.list',
+  'registration.review.progress',
   'registration.review.view',
   'registration.review.view-evidence',
   'registration.review.request-correction',
@@ -30,6 +31,8 @@ const registrationPermissions = [
   'registration.review.reject',
   'registration.review.view-deletion-status',
   'registration.review.retry-deletion',
+  'registration.dossier.list',
+  'registration.dossier.view',
 ] as const;
 
 describe('Feature 006 registration authorization catalog', () => {

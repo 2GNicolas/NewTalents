@@ -134,14 +134,12 @@ describe('Feature 005 passport HTTP contract', () => {
     expect(JSON.stringify(response.body)).not.toContain('dateOfBirth');
   });
 
-  it('does not expose creation capability to Analyst or Administrator list responses', async () => {
-    const analystList = await request(app.getHttpServer())
+  it('denies the unassigned Analyst collection and does not grant Administrator creation', async () => {
+    await request(app.getHttpServer())
       .get('/passports?context=PARTICULAR')
       .set('Authorization', `Bearer ${analystToken}`)
-      .expect(200)
+      .expect(403)
       .expect('Cache-Control', 'no-store');
-    expect(analystList.body.collectionActions).toEqual(['VIEW_PARTICULAR_SELECTOR']);
-    expect(analystList.body.passports.some((item: { passportId: string }) => item.passportId === createdPassportId)).toBe(true);
 
     const adminList = await request(app.getHttpServer())
       .get('/passports?context=PARTICULAR')
@@ -207,7 +205,7 @@ describe('Feature 005 passport HTTP contract', () => {
     expect((await prisma.playerPassport.findUniqueOrThrow({ where: { id: createdPassportId } })).position).toBe('Volante');
   });
 
-  it('submits, returns, and resubmits with the approved state transitions', async () => {
+  it('submits and denies a return by an Analyst without current custody', async () => {
     const submitted = await request(app.getHttpServer())
       .post(`/passports/${createdPassportId}/submit`)
       .set('Authorization', `Bearer ${tutorToken}`)
@@ -223,56 +221,42 @@ describe('Feature 005 passport HTTP contract', () => {
       .expect(409)
       .expect((response) => expect(response.body).toMatchObject({ code: 'invalid_state' }));
 
-    const returned = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post(`/passports/${createdPassportId}/return`)
       .set('Authorization', `Bearer ${analystToken}`)
       .send({ reason: 'Corrige la categoría declarada' })
-      .expect(200)
+      .expect(403)
       .expect('Cache-Control', 'no-store');
-    expect(returned.body.lifecycleState).toBe('RETURNED_FOR_CORRECTION');
-
-    const resubmitted = await request(app.getHttpServer())
-      .post(`/passports/${createdPassportId}/submit`)
+    const status = await request(app.getHttpServer())
+      .get(`/passports/${createdPassportId}`)
       .set('Authorization', `Bearer ${tutorToken}`)
-      .send({})
       .expect(200)
       .expect('Cache-Control', 'no-store');
-    expect(resubmitted.body.lifecycleState).toBe('IN_REVIEW');
+    expect(status.body.lifecycleState).toBe('IN_REVIEW');
   });
 
-  it('blocks approval until the possible-duplicate signal is resolved, then resolves, approves, and activates', async () => {
+  it('denies duplicate review and approval without custody and activation before approval', async () => {
     await prisma.passportPossibleDuplicateSignal.create({ data: { passportId: createdPassportId } });
 
     await request(app.getHttpServer())
       .post(`/passports/${createdPassportId}/approve`)
       .set('Authorization', `Bearer ${analystToken}`)
       .send({})
-      .expect(409)
-      .expect((response) => expect(response.body).toMatchObject({ code: 'unresolved_duplicate_signal' }));
+      .expect(403);
 
-    const resolved = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post(`/passports/${createdPassportId}/possible-duplicate/resolve`)
       .set('Authorization', `Bearer ${analystToken}`)
       .send({ resolution: 'DIFFERENT_PLAYERS' })
-      .expect(200)
-      .expect('Cache-Control', 'no-store');
-    expect(resolved.body.possibleDuplicate).toBe('RESOLVED_DIFFERENT');
+      .expect(403);
 
-    const approved = await request(app.getHttpServer())
-      .post(`/passports/${createdPassportId}/approve`)
-      .set('Authorization', `Bearer ${analystToken}`)
-      .send({})
-      .expect(200)
-      .expect('Cache-Control', 'no-store');
-    expect(approved.body.lifecycleState).toBe('APPROVED');
-
-    const activated = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post(`/passports/${createdPassportId}/activate`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({})
-      .expect(200)
-      .expect('Cache-Control', 'no-store');
-    expect(activated.body.lifecycleState).toBe('ACTIVE');
+      .expect(409);
+    expect((await prisma.playerPassport.findUniqueOrThrow({ where: { id: createdPassportId } })).state).toBe('IN_REVIEW');
+    expect(await prisma.passportPossibleDuplicateSignal.count({ where: { passportId: createdPassportId, status: 'UNRESOLVED' } })).toBe(1);
   });
 
   it('returns a redacted history and uses the non-disclosing not-found error for unrelated lookups', async () => {

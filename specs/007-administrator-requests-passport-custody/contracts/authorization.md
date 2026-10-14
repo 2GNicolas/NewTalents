@@ -30,7 +30,8 @@ El backend evalúa todas las capacidades. La navegación, el shell y una etiquet
 
 ## Analyst capability
 
-- `passport.review` continúa requiriendo rol `ANALYST`, pero para una colección o recurso concreto también requiere `analystCustodyActive=true`.
+- La revisión de un pasaporte `IN_REVIEW`, su devolución, la resolución de duplicados y la aprobación son decisiones del Administrador. La activación posterior es una decisión administrativa separada; ninguna de ellas asigna custodia.
+- El acceso `passport.review` del Analista requiere rol `ANALYST`, identidad activa, pasaporte `ACTIVE` y `analystCustodyActive=true` para la colección o recurso concreto; no autoriza decisiones previas a la activación.
 - La colección de trabajo del Analista solo incluye pasaportes cuya custodia actual apunta a su identidad.
 
 ## Resource facts
@@ -60,8 +61,8 @@ El backend evalúa todas las capacidades. La navegación, el shell y una etiquet
 | Assign | active Administrator + assign + active basic passport + unassigned/current version + eligible target | `409` for stale/ineligible current state; no partial change. |
 | Change | active Administrator + change + active basic passport + assigned/current version + different eligible target | `409`; prior custody remains. |
 | Remove | active Administrator + remove + active basic passport + assigned/current version | `409`; prior custody remains. |
-| Analyst list | active ANALYST + each row's active custody | omit every unassigned/other-Analyst passport. |
-| Analyst open/review | active ANALYST + `analystCustodyActive` for passport | missing and denied both `passport_not_found`. |
+| Analyst list | active ANALYST + each row's `ACTIVE` passport and current custody | omit every unassigned/other-Analyst passport. |
+| Analyst open/review | active ANALYST + `ACTIVE` passport + `analystCustodyActive` for passport | missing and denied both `passport_not_found`; no lifecycle decision. |
 
 ## Runtime re-evaluation
 
