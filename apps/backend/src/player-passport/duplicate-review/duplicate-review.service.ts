@@ -30,7 +30,7 @@ export type CreatePossibleDuplicateSignalInput = Readonly<{
 export type ResolvePossibleDuplicateInput = Readonly<{
   passportId: string;
   signalId: string;
-  analystIdentityId: string;
+  reviewerIdentityId: string;
   resolution: PassportDuplicateResolution;
   correctionReason?: string;
   expectedVersion?: number;
@@ -90,7 +90,7 @@ export class DuplicateReviewService {
     if (
       !UUID_PATTERN.test(input.passportId)
       || !UUID_PATTERN.test(input.signalId)
-      || !UUID_PATTERN.test(input.analystIdentityId)
+      || !UUID_PATTERN.test(input.reviewerIdentityId)
       || !RESOLUTION_VALUES.has(input.resolution)
     ) {
       return { outcome: 'invalid' };
@@ -115,7 +115,7 @@ export class DuplicateReviewService {
       if (!input.correctionReason || input.correctionReason.trim().length === 0) return { outcome: 'missing-reason' };
       const returned = await this.transitionService.returnForCorrection(transaction, {
         passportId: input.passportId,
-        analystIdentityId: input.analystIdentityId,
+        reviewerIdentityId: input.reviewerIdentityId,
         reason: input.correctionReason,
         ...(input.expectedVersion === undefined ? {} : { expectedVersion: input.expectedVersion }),
       });
@@ -128,7 +128,7 @@ export class DuplicateReviewService {
       data: {
         status: 'RESOLVED',
         resolution: input.resolution,
-        resolvedByIdentityId: input.analystIdentityId,
+        resolvedByIdentityId: input.reviewerIdentityId,
         resolvedAt: new Date(),
       },
     });
@@ -136,7 +136,7 @@ export class DuplicateReviewService {
 
     await this.traceService.record(transaction, {
       passportId: input.passportId,
-      actorIdentityId: input.analystIdentityId,
+      actorIdentityId: input.reviewerIdentityId,
       action: PassportLifecycleAction.POSSIBLE_DUPLICATE_RESOLVED,
       outcome: PassportLifecycleOutcome.APPLIED,
       priorState: passport.state,

@@ -4,7 +4,7 @@ import { PassportTransitionService } from './passport-transition.service.js';
 
 const passportId = '44444444-4444-4444-8444-444444444444';
 const actorIdentityId = '11111111-1111-4111-8111-111111111111';
-const analystIdentityId = '55555555-5555-4555-8555-555555555555';
+const reviewerIdentityId = '55555555-5555-4555-8555-555555555555';
 
 describe('PassportTransitionService', () => {
   it('edits profile fields only in editable states and records an EDITED trace without changing state', async () => {
@@ -119,7 +119,7 @@ describe('PassportTransitionService', () => {
 
     await expect(service.returnForCorrection(transaction as never, {
       passportId,
-      analystIdentityId,
+      reviewerIdentityId,
       reason: 'Corrige la categoría declarada',
     })).resolves.toEqual({
       outcome: 'applied',
@@ -128,7 +128,7 @@ describe('PassportTransitionService', () => {
       version: 6,
     });
     expect(transaction.passportReviewReturn.create).toHaveBeenCalledWith({
-      data: { passportId, analystIdentityId, reason: 'Corrige la categoría declarada' },
+      data: { passportId, reviewerIdentityId, reason: 'Corrige la categoría declarada' },
     });
     expect(traceService.record).toHaveBeenCalledWith(transaction, expect.objectContaining({
       action: 'RETURNED_FOR_CORRECTION',

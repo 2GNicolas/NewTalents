@@ -5,7 +5,7 @@ import { DuplicateReviewService } from './duplicate-review.service.js';
 const passportId = '44444444-4444-4444-8444-444444444444';
 const playerId = '33333333-3333-4333-8333-333333333333';
 const signalId = '66666666-6666-4666-8666-666666666666';
-const analystIdentityId = '55555555-5555-4555-8555-555555555555';
+const reviewerIdentityId = '55555555-5555-4555-8555-555555555555';
 
 describe('DuplicateReviewService', () => {
   it('creates a private possible-duplicate signal only when a matching name/DOB fingerprint exists', async () => {
@@ -45,7 +45,7 @@ describe('DuplicateReviewService', () => {
     await expect(service.resolve(transaction as never, {
       passportId,
       signalId,
-      analystIdentityId,
+      reviewerIdentityId,
       resolution: 'DIFFERENT_PLAYERS',
     })).resolves.toEqual({
       outcome: 'resolved',
@@ -58,7 +58,7 @@ describe('DuplicateReviewService', () => {
       data: {
         status: 'RESOLVED',
         resolution: 'DIFFERENT_PLAYERS',
-        resolvedByIdentityId: analystIdentityId,
+        resolvedByIdentityId: reviewerIdentityId,
         resolvedAt: expect.any(Date),
       },
     });
@@ -93,7 +93,7 @@ describe('DuplicateReviewService', () => {
     await expect(service.resolve(transaction as never, {
       passportId,
       signalId,
-      analystIdentityId,
+      reviewerIdentityId,
       resolution: 'CORRECTABLE',
       correctionReason: 'Corrige el nombre legal',
     })).resolves.toEqual({
@@ -104,7 +104,7 @@ describe('DuplicateReviewService', () => {
     });
     expect(transitionService.returnForCorrection).toHaveBeenCalledWith(transaction, {
       passportId,
-      analystIdentityId,
+      reviewerIdentityId,
       reason: 'Corrige el nombre legal',
     });
     expect(traceService.record).toHaveBeenCalledWith(transaction, expect.objectContaining({
@@ -130,7 +130,7 @@ describe('DuplicateReviewService', () => {
     await expect(service.resolve(transaction as never, {
       passportId,
       signalId,
-      analystIdentityId,
+      reviewerIdentityId,
       resolution: 'CONFIRMED_EXISTING_PLAYER',
     })).resolves.toEqual({
       outcome: 'resolved',

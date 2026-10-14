@@ -240,7 +240,7 @@ describe('Feature 005 passport HTTP contract', () => {
       .expect(200)
       .expect('Cache-Control', 'no-store');
     expect(returned.body.lifecycleState).toBe('RETURNED_FOR_CORRECTION');
-    expect((await prisma.passportReviewReturn.findFirstOrThrow({ where: { passportId: createdPassportId }, orderBy: { createdAt: 'desc' } })).analystIdentityId).toBe(adminIdentity);
+    expect((await prisma.passportReviewReturn.findFirstOrThrow({ where: { passportId: createdPassportId }, orderBy: { createdAt: 'desc' } })).reviewerIdentityId).toBe(adminIdentity);
     const status = await request(app.getHttpServer())
       .get(`/passports/${createdPassportId}`)
       .set('Authorization', `Bearer ${tutorToken}`)

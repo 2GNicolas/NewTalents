@@ -312,7 +312,7 @@ model Identity {
   passportResponsibilities              PassportResponsibility[]                @relation("passportResponsibilityIdentity")
   representativeConfirmations           RepresentativeConfirmation[]            @relation("representativeConfirmationIdentity")
   reconciliationAudits                  HistoricalTutorReconciliationAudit[]    @relation("reconciliationAuditActor")
-  passportReviewReturns                 PassportReviewReturn[]                  @relation("passportReturningAnalyst")
+  passportReviewReturns                 PassportReviewReturn[]                  @relation("passportReturningReviewer")
   passportDuplicateResolutions          PassportPossibleDuplicateSignal[]       @relation("passportSignalResolver")
   passportLifecycleEvents               PassportLifecycleEvent[]                @relation("passportEventActor")
   ownedRegistrationRequests             RegistrationRequest[]                   @relation("registrationRequestOwner")
@@ -620,13 +620,13 @@ model InitialTutorResponsibility {
 }
 
 model PassportReviewReturn {
-  id                String         @id @default(uuid()) @db.Uuid
-  passportId        String         @db.Uuid
-  analystIdentityId String         @db.Uuid
-  reason            String
-  createdAt         DateTime       @default(now())
-  passport          PlayerPassport @relation(fields: [passportId], references: [id], onDelete: Restrict)
-  analyst           Identity       @relation("passportReturningAnalyst", fields: [analystIdentityId], references: [id], onDelete: Restrict)
+  id                 String         @id @default(uuid()) @db.Uuid
+  passportId         String         @db.Uuid
+  reviewerIdentityId String         @db.Uuid
+  reason             String
+  createdAt          DateTime       @default(now())
+  passport           PlayerPassport @relation(fields: [passportId], references: [id], onDelete: Restrict)
+  reviewer           Identity       @relation("passportReturningReviewer", fields: [reviewerIdentityId], references: [id], onDelete: Restrict)
 
   @@index([passportId, createdAt])
 }

@@ -33,7 +33,7 @@ export type SubmitPassportInput = Readonly<{
 
 export type ReturnPassportInput = Readonly<{
   passportId: string;
-  analystIdentityId: string;
+  reviewerIdentityId: string;
   reason: string;
   expectedVersion?: number;
 }>;
@@ -172,7 +172,7 @@ export class PassportTransitionService {
   }
 
   async returnForCorrection(transaction: Prisma.TransactionClient, input: ReturnPassportInput): Promise<PassportTransitionResult> {
-    if (!UUID_PATTERN.test(input.passportId) || !UUID_PATTERN.test(input.analystIdentityId) || input.reason.trim().length === 0) {
+    if (!UUID_PATTERN.test(input.passportId) || !UUID_PATTERN.test(input.reviewerIdentityId) || input.reason.trim().length === 0) {
       return { outcome: 'invalid' };
     }
 
@@ -193,7 +193,7 @@ export class PassportTransitionService {
     await transaction.passportReviewReturn.create({
       data: {
         passportId: input.passportId,
-        analystIdentityId: input.analystIdentityId,
+        reviewerIdentityId: input.reviewerIdentityId,
         reason: input.reason,
       },
     });
@@ -203,7 +203,7 @@ export class PassportTransitionService {
 
     await this.traceService.record(transaction, {
       passportId: input.passportId,
-      actorIdentityId: input.analystIdentityId,
+      actorIdentityId: input.reviewerIdentityId,
       action: PassportLifecycleAction.RETURNED_FOR_CORRECTION,
       outcome: PassportLifecycleOutcome.APPLIED,
       priorState: passport.state,
@@ -214,8 +214,8 @@ export class PassportTransitionService {
     return { outcome: 'applied', passportId: current.id, state: current.state, version: current.version };
   }
 
-  async approve(transaction: Prisma.TransactionClient, input: Readonly<{ passportId: string; analystIdentityId: string; expectedVersion?: number }>): Promise<PassportApprovalResult> {
-    if (!UUID_PATTERN.test(input.passportId) || !UUID_PATTERN.test(input.analystIdentityId)) return { outcome: 'invalid' };
+  async approve(transaction: Prisma.TransactionClient, input: Readonly<{ passportId: string; reviewerIdentityId: string; expectedVersion?: number }>): Promise<PassportApprovalResult> {
+    if (!UUID_PATTERN.test(input.passportId) || !UUID_PATTERN.test(input.reviewerIdentityId)) return { outcome: 'invalid' };
 
     const passport = await transaction.playerPassport.findUnique({
       where: { id: input.passportId },
@@ -246,7 +246,7 @@ export class PassportTransitionService {
 
     await this.traceService.record(transaction, {
       passportId: input.passportId,
-      actorIdentityId: input.analystIdentityId,
+      actorIdentityId: input.reviewerIdentityId,
       action: PassportLifecycleAction.APPROVED,
       outcome: PassportLifecycleOutcome.APPLIED,
       priorState: passport.state,

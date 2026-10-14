@@ -341,7 +341,7 @@ export class PassportController {
 
     const result = await this.transactionRunner.execute((transaction) => this.transitions.returnForCorrection(transaction, {
       passportId,
-      analystIdentityId: request.actor.identityId,
+      reviewerIdentityId: request.actor.identityId,
       reason: parsed.value.reason,
       ...(parsed.value.expectedVersion === undefined ? {} : { expectedVersion: parsed.value.expectedVersion }),
     }));
@@ -373,7 +373,7 @@ export class PassportController {
       return this.duplicates.resolve(transaction, {
         passportId,
         signalId: signal.id,
-        analystIdentityId: request.actor.identityId,
+        reviewerIdentityId: request.actor.identityId,
         resolution: parsed.value.resolution,
         ...(parsed.value.correctionReason === undefined ? {} : { correctionReason: parsed.value.correctionReason }),
         ...(parsed.value.expectedVersion === undefined ? {} : { expectedVersion: parsed.value.expectedVersion }),
@@ -404,7 +404,7 @@ export class PassportController {
 
     const result = await this.transactionRunner.execute((transaction) => this.transitions.approve(transaction, {
       passportId,
-      analystIdentityId: request.actor.identityId,
+      reviewerIdentityId: request.actor.identityId,
       ...parsed.value,
     }));
     if (result.outcome !== 'applied') return this.approvalError(response, result);

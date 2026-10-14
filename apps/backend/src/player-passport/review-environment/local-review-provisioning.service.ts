@@ -240,7 +240,7 @@ export class LocalReviewProvisioningService {
       current = { state: result.state };
     }
     if (target === 'RETURNED_FOR_CORRECTION' && current.state === 'IN_REVIEW') {
-      const result = await this.passportTransactions.execute((tx) => this.transitions.returnForCorrection(tx, { passportId, analystIdentityId: administratorIdentityId, reason: 'Ajustar informacion deportiva declarada' }));
+      const result = await this.passportTransactions.execute((tx) => this.transitions.returnForCorrection(tx, { passportId, reviewerIdentityId: administratorIdentityId, reason: 'Ajustar informacion deportiva declarada' }));
       if (result.outcome !== 'applied') throw new Error(`review-return-${result.outcome}`);
       current = { state: result.state };
     }
@@ -250,7 +250,7 @@ export class LocalReviewProvisioningService {
       current = { state: result.state };
     }
     if (current.state === 'IN_REVIEW' && ['APPROVED', 'ACTIVE'].includes(target)) {
-      const result = await this.passportTransactions.execute((tx) => this.transitions.approve(tx, { passportId, analystIdentityId: administratorIdentityId }));
+      const result = await this.passportTransactions.execute((tx) => this.transitions.approve(tx, { passportId, reviewerIdentityId: administratorIdentityId }));
       if (result.outcome !== 'applied') throw new Error(`review-approve-${result.outcome}`);
       current = { state: result.state };
     }
