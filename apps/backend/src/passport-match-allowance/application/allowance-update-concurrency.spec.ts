@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AllowanceCommand } from './allowance-command.js';
+import { AllowanceCommand, proposedAllowanceOverfilled } from './allowance-command.js';
 
 const passportId = '22222222-2222-4222-8222-222222222222';
 const administratorId = '11111111-1111-4111-8111-111111111111';
@@ -24,6 +24,7 @@ function setup(options: { version?: number; revisions?: RevisionFixture[]; now?:
   const aggregate = { id: 'allowance-1', version: options.version ?? revisions.length, activatedOn };
   const tx = {
     playerPassport: { findUnique: vi.fn().mockResolvedValue({ id: passportId, state: options.state ?? 'ACTIVE' }) },
+    firstMatch: { findMany: vi.fn().mockResolvedValue([]) },
     passportMatchAllowance: { findUnique: vi.fn().mockResolvedValue(aggregate), update: vi.fn().mockResolvedValue({ ...aggregate, version: aggregate.version + 1 }) },
     passportMatchAllowanceRevision: {
       findFirst: vi.fn().mockImplementation(async ({ where }: { where: { idempotencyKey: string } }) => revisions.find((row) => row.idempotencyKey === where.idempotencyKey) ?? null),
@@ -38,6 +39,33 @@ function setup(options: { version?: number; revisions?: RevisionFixture[]; now?:
 }
 
 describe('confirmed update and concurrency', () => {
+  it('guards against synthetic RESERVED + USED overfill (unit coverage, not PostgreSQL evidence)', async () => {
+    const { command, tx } = setup();
+    tx.firstMatch.findMany.mockResolvedValue([
+      { matchDate: new Date('2026-02-28T00:00:00Z'), unitState: 'RESERVED' },
+      { matchDate: new Date('2026-03-31T00:00:00Z'), unitState: 'USED' },
+    ]);
+    expect(await command.confirm({ ...input, cadence: 'QUARTERLY', matchLimit: 1 }))
+      .toMatchObject({ outcome: 'conflict', current: { version: 1 } });
+    expect(tx.firstMatch.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      unitState: { in: ['RESERVED', 'USED'] }, matchDate: { gte: new Date('2026-02-28T00:00:00Z') },
+    }) }));
+    expect(tx.passportMatchAllowanceRevision.create).not.toHaveBeenCalled();
+    expect(tx.passportMatchAllowance.update).not.toHaveBeenCalled();
+  });
+
+  it('rebuckets synthetic units at the effective boundary (unit guard coverage only)', () => {
+    const source = { passportId, activatedOn: '2026-01-31', revisions: [
+      { sequence: 1, effectiveOn: '2026-01-31', cadence: 'MONTHLY' as const, matchLimit: 4 },
+      { sequence: 2, effectiveOn: '2026-02-28', cadence: 'QUARTERLY' as const, matchLimit: 2 },
+    ] };
+    const unit = (matchDate: string, unitState: 'RESERVED' | 'USED') =>
+      ({ matchDate: new Date(`${matchDate}T00:00:00.000Z`), unitState });
+    expect(proposedAllowanceOverfilled(source, '2026-02-28', [unit('2026-02-27', 'USED'),
+      unit('2026-02-28', 'RESERVED'), unit('2026-03-31', 'USED')])).toBe(false);
+    expect(proposedAllowanceOverfilled(source, '2026-02-28', [unit('2026-02-28', 'RESERVED'),
+      unit('2026-03-31', 'USED'), unit('2026-04-30', 'RESERVED')])).toBe(true);
+  });
   it('defers a limit change to the next old boundary and keeps the January-31 anchor', async () => {
     const { command, tx } = setup();
     const result = await command.confirm(input);

@@ -17,7 +17,7 @@ export class AllowanceTransactionRunner {
     for (let attempt = 0; attempt < ALLOWANCE_TRANSACTION_ATTEMPTS; attempt += 1) {
       try {
         return await this.prisma.$transaction(async (transaction) => {
-          await transaction.$queryRaw(Prisma.sql`SELECT "id" FROM "PlayerPassport" WHERE "id" = ${passportId}::uuid FOR UPDATE`);
+          await this.lockInTransaction(transaction, passportId);
           return operation(transaction);
         }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       } catch (error) {
@@ -27,8 +27,21 @@ export class AllowanceTransactionRunner {
     }
     throw new Error('Allowance transaction retry exhausted');
   }
+
+  /** For a future trusted producer already inside its own serializable transaction. */
+  async lockInTransaction(transaction: AllowanceTransactionClient, passportId: string): Promise<boolean> {
+    const rows = await transaction.$queryRaw<{ id: string }[]>(
+      Prisma.sql`SELECT "id" FROM "PlayerPassport" WHERE "id" = ${passportId}::uuid FOR UPDATE`,
+    );
+    return rows.length === 1;
+  }
 }
 
 export function errorCode(error: unknown): string | undefined {
-  return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string' ? error.code : undefined;
+  if (typeof error !== 'object' || error === null) return undefined;
+  if ('code' in error && typeof error.code === 'string') return error.code;
+  const cause = 'cause' in error && typeof error.cause === 'object' && error.cause !== null ? error.cause : null;
+  // Prisma's pg adapter may surface SQLSTATE 40001 without Prisma's P2034 wrapper.
+  if (cause && 'originalCode' in cause && cause.originalCode === '40001') return 'P2034';
+  return undefined;
 }

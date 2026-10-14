@@ -11,6 +11,10 @@ jest.mock('../../src/authentication/components/session-controls', () => ({
   SessionControls: () => null,
 }));
 
+jest.mock('../../src/authentication/authentication-provider', () => ({
+  useAuthentication: () => ({ sessionAccess: { classification: 'product', capabilities: [] }, getAccessToken: () => 'synthetic-token' }),
+}));
+
 jest.mock('../../src/passport/passport-state', () => {
   const passport = {
     state: {
@@ -89,11 +93,11 @@ function arrange(context: 'PARTICULAR' | 'ACADEMY', passports: readonly Passport
 describe('corrective contextual passport entry', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('opens the only particular passport in Resumen without requiring create capability', async () => {
+  it('opens the only active particular passport through its first-match-aware entry', async () => {
     const navigation = arrange('PARTICULAR', [passport()], null);
     await render(<PassportEntryRoute />);
 
-    await waitFor(() => expect(navigation.replace).toHaveBeenCalledWith(`/passports/${passportId}/sections/resumen`));
+    await waitFor(() => expect(navigation.replace).toHaveBeenCalledWith(`/passports/${passportId}`));
     expect(passportModule.mockPassport.loadList).toHaveBeenCalledWith({ context: 'PARTICULAR' });
   });
 

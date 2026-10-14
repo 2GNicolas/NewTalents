@@ -269,6 +269,25 @@ enum MatchAllowanceCadence {
   ANNUAL
 }
 
+enum FirstMatchState {
+  WAITING
+  CANCELED
+  LOADED
+}
+
+enum FirstMatchUnitState {
+  RESERVED
+  RELEASED
+  USED
+}
+
+enum FirstMatchAction {
+  SCHEDULE
+  RESCHEDULE
+  CANCEL
+  LOAD_CONFIRMED
+}
+
 model Identity {
   id                                    String                                  @id @default(uuid()) @db.Uuid
   status                                IdentityStatus                          @default(ACTIVE)
@@ -315,6 +334,10 @@ model Identity {
   priorPassportCustodyEvents            PassportCustodyEvent[]                  @relation("passportCustodyPreviousAnalyst")
   nextPassportCustodyEvents             PassportCustodyEvent[]                  @relation("passportCustodyNextAnalyst")
   confirmedMatchAllowanceRevisions      PassportMatchAllowanceRevision[]        @relation("matchAllowanceRevisionActor")
+  scheduledFirstMatches                 FirstMatch[]                            @relation("firstMatchScheduler")
+  loadedFirstMatches                    FirstMatch[]                            @relation("firstMatchAnalyst")
+  canceledFirstMatches                  FirstMatch[]                            @relation("firstMatchCanceler")
+  firstMatchIntents                     FirstMatchIntent[]                      @relation("firstMatchIntentActor")
 }
 
 model RoleAssignment {
@@ -528,7 +551,10 @@ model PlayerPassport {
   custody                  PassportCustody?
   custodyEvents            PassportCustodyEvent[]
   matchAllowance           PassportMatchAllowance?
+  firstMatches             FirstMatch[]
+  firstMatchIntents         FirstMatchIntent[]
 
+  @@unique([id, playerId])
   @@index([createdByIdentityId, state])
   @@index([originAcademyId])
   @@index([state])
@@ -1164,4 +1190,53 @@ model PassportMatchAllowanceRevision {
   @@unique([allowanceId, idempotencyKey])
   @@index([allowanceId, effectiveOn, sequence], map: "AllowanceRevision_effective_idx")
   @@index([confirmedByIdentityId, confirmedAt], map: "AllowanceRevision_actor_confirmedAt_idx")
+}
+
+model FirstMatch {
+  id                         String              @id @default(uuid()) @db.Uuid
+  passportId                 String              @db.Uuid
+  playerId                   String              @db.Uuid
+  matchDate                  DateTime            @db.Date
+  matchTime                  String              @db.VarChar(5)
+  opponent                   String              @db.VarChar(160)
+  competition                String              @db.VarChar(160)
+  venue                      String              @db.VarChar(160)
+  scheduledByIdentityId      String              @db.Uuid
+  scheduledAt                DateTime            @default(now())
+  state                      FirstMatchState     @default(WAITING)
+  unitState                  FirstMatchUnitState @default(RESERVED)
+  version                    Int                 @default(1)
+  updatedAt                  DateTime            @updatedAt
+  loadedByAnalystIdentityId  String?             @db.Uuid
+  loadId                     String?             @unique @db.Uuid
+  loadedAt                   DateTime?
+  canceledByIdentityId       String?             @db.Uuid
+  canceledAt                 DateTime?
+  passport                   PlayerPassport      @relation(fields: [passportId, playerId], references: [id, playerId], onDelete: Restrict)
+  scheduler                  Identity            @relation("firstMatchScheduler", fields: [scheduledByIdentityId], references: [id], onDelete: Restrict)
+  analyst                    Identity?           @relation("firstMatchAnalyst", fields: [loadedByAnalystIdentityId], references: [id], onDelete: Restrict)
+  canceler                   Identity?           @relation("firstMatchCanceler", fields: [canceledByIdentityId], references: [id], onDelete: Restrict)
+  intents                    FirstMatchIntent[]
+
+  @@unique([id, passportId])
+  @@index([passportId, matchDate, unitState])
+}
+
+model FirstMatchIntent {
+  id               String           @id @default(uuid()) @db.Uuid
+  passportId       String           @db.Uuid
+  matchId          String?          @db.Uuid
+  idempotencyKey   String           @db.Uuid
+  action           FirstMatchAction
+  intentDigest     String           @db.VarChar(64)
+  actorIdentityId  String           @db.Uuid
+  occurredAt       DateTime         @default(now())
+  outcome          String           @db.VarChar(32)
+  resultVersion    Int
+  passport         PlayerPassport   @relation(fields: [passportId], references: [id], onDelete: Restrict)
+  match            FirstMatch?      @relation(fields: [matchId, passportId], references: [id, passportId], onDelete: Restrict)
+  actor            Identity         @relation("firstMatchIntentActor", fields: [actorIdentityId], references: [id], onDelete: Restrict)
+
+  @@unique([passportId, idempotencyKey])
+  @@index([matchId, occurredAt])
 }

@@ -29,4 +29,17 @@ describe('allowance serializable passport lock', () => {
     await expect(new AllowanceTransactionRunner(serialization as never, delay).executeLocked(passportId, vi.fn())).rejects.toMatchObject({ code: 'P2034' });
     expect(serialization.$transaction).toHaveBeenCalledTimes(ALLOWANCE_TRANSACTION_ATTEMPTS);
   });
+
+  it('retries a PostgreSQL 40001 write conflict surfaced by the pg adapter', async () => {
+    const transaction = { $queryRaw: vi.fn().mockResolvedValue([{ id: passportId }]) };
+    const adapterConflict = { name: 'DriverAdapterError', message: 'TransactionWriteConflict',
+      cause: { originalCode: '40001', kind: 'TransactionWriteConflict' } };
+    const prisma = { $transaction: vi.fn().mockRejectedValueOnce(adapterConflict)
+      .mockImplementation(async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction)) };
+    const operation = vi.fn().mockResolvedValue('committed');
+    await expect(new AllowanceTransactionRunner(prisma as never, async () => undefined)
+      .executeLocked(passportId, operation)).resolves.toBe('committed');
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
 });

@@ -3,7 +3,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { colombiaLocalDate, periodContaining, type AllowanceCadence } from '../domain/allowance-period.js';
 import { AllowanceTransactionRunner, errorCode, type AllowanceTransactionClient } from '../persistence/allowance-transaction.runner.js';
 import { AdministratorAllowanceAuthorization } from './administrator-allowance-authorization.js';
-import { resolveAllowancePeriod, type AllowanceRuleRevision } from './allowance-period-query.js';
+import { resolveAllowancePeriod, type AllowancePeriodSource, type AllowanceRuleRevision } from './allowance-period-query.js';
 
 export type CreateAllowanceInput = Readonly<{
   passportId: string;
@@ -112,6 +112,14 @@ export class AllowanceCommand {
     if (!active || !latest || latest.sequence !== aggregate.version) return { outcome: 'unavailable' };
     const effectiveOn = active.period.endExclusive;
     const newVersion = aggregate.version + 1;
+    const proposedSource: AllowancePeriodSource = { passportId: input.passportId,
+      activatedOn: dateOnly(aggregate.activatedOn), revisions: [...revisions.map(periodRevision),
+        { sequence: newVersion, effectiveOn, cadence: input.cadence, matchLimit: input.matchLimit }] };
+    const units = await transaction.firstMatch.findMany({ where: { passportId: input.passportId,
+      unitState: { in: ['RESERVED', 'USED'] }, matchDate: { gte: new Date(`${effectiveOn}T00:00:00.000Z`) } },
+    select: { matchDate: true, unitState: true } });
+    if (proposedAllowanceOverfilled(proposedSource, effectiveOn, units))
+      return { outcome: 'conflict', current: { version: aggregate.version } };
     const created = await transaction.passportMatchAllowanceRevision.create({
       data: { allowanceId: aggregate.id, sequence: newVersion, idempotencyKey: input.idempotencyKey,
         expectedVersion: input.expectedVersion, cadence: input.cadence, matchLimit: BigInt(input.matchLimit),
@@ -219,6 +227,25 @@ function dateOnly(value: Date): string { return value.toISOString().slice(0, 10)
 function periodRevision(revision: StoredRevision): AllowanceRuleRevision {
   return { sequence: revision.sequence, effectiveOn: dateOnly(revision.effectiveOn), cadence: revision.cadence,
     matchLimit: Number(revision.matchLimit) };
+}
+
+/** Rebucket unchanged booked dates under a proposed effective revision; never mutate the units. */
+export function proposedAllowanceOverfilled(source: AllowancePeriodSource, effectiveOn: string,
+  units: readonly Readonly<{ matchDate: Date; unitState: 'RESERVED' | 'USED' | 'RELEASED' }>[]): boolean {
+  const periods = new Map<string, { total: number; limit: number }>();
+  for (const unit of units) {
+    if (unit.unitState === 'RELEASED') continue;
+    const matchDate = dateOnly(unit.matchDate);
+    if (matchDate < effectiveOn) continue;
+    const resolved = resolveAllowancePeriod(source, matchDate);
+    if (!resolved) return true;
+    const key = `${resolved.period.start}/${resolved.period.endExclusive}`;
+    const group = periods.get(key) ?? { total: 0, limit: resolved.matchLimit };
+    group.total += 1;
+    periods.set(key, group);
+    if (group.total > group.limit) return true;
+  }
+  return false;
 }
 
 function projectSnapshot(passportId: string, activatedOn: Date, version: number, revisions: readonly StoredRevision[], date: string, modifiedAt: Date) {

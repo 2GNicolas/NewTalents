@@ -27,5 +27,6 @@ import { AllowanceTransactionRunner } from './persistence/allowance-transaction.
         decrypt: (ciphertext) => decryptPassportValue(keys.privateEncryptionKey, ciphertext),
       }) },
   ],
+  exports: [AllowanceTransactionRunner],
 })
 export class PassportMatchAllowanceModule {}
