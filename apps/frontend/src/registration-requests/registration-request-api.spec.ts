@@ -3,6 +3,22 @@ import { createRegistrationRequestApi, parseRegistrationRequestSnapshot, type Re
 const snapshot = { id: '22222222-2222-4222-8222-222222222222', type: 'PERSONAL_ADULT', status: 'DRAFT', version: 0, capabilities: [], createdAt: '2026-09-25T12:00:00.000Z', evidence: [] };
 
 describe('registration request create DTO routing', () => {
+  it('retains only the final approved passport ID and lifecycle state needed for manual custody continuation', async () => {
+    const passportId = '22222222-2222-4222-8222-222222222222';
+    const fetcher = jest.fn().mockResolvedValue(new Response(JSON.stringify({ data: {
+      outcome: 'approved', requestId: snapshot.id, requestStatus: 'APPROVED',
+      result: { passport: { id: passportId, state: 'ACTIVE', privateIdentity: 'not projected' } },
+    } }), { status: 202, headers: { 'Content-Type': 'application/json' } }));
+    const api = createRegistrationRequestApi({ apiBaseUrl: 'https://api.example.test/api/', getAccessToken: () => 'synthetic-token' }, fetcher);
+    const result = await api.approveAdmin?.(snapshot.id, { expectedVersion: 3,
+      idempotencyKey: '66666666-6666-4666-8666-666666666666',
+      manualDossierConfirmation: { confirmed: true, dossierName: 'EXP-009-2026', declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } });
+    expect(result).toEqual({ kind: 'success', value: {
+      outcome: 'approved', requestId: snapshot.id, requestStatus: 'APPROVED', passportId, passportState: 'ACTIVE',
+    } });
+    expect(JSON.stringify(result)).not.toContain('privateIdentity');
+  });
+
   it.each([
     ['registration_conflict', 'registration-conflict'],
     ['registration_request_version_conflict', 'version-conflict'],
@@ -72,6 +88,6 @@ describe('registration request create DTO routing', () => {
     const fetcher = jest.fn().mockResolvedValue(new Response(JSON.stringify({ data: { outcome: 'approved', requestId: snapshot.id, requestStatus: 'APPROVED', result: { passport: { id: passportId, state: 'ACTIVE', enrichmentStatus: 'AWAITING_ANALYST_ENRICHMENT' } } } }), { status: 200 }));
     const api = createRegistrationRequestApi({ apiBaseUrl: 'https://api.example.test/api/' }, fetcher);
 
-    await expect(api.approveAdmin?.(snapshot.id, { expectedVersion: 4, idempotencyKey: '66666666-6666-4666-8666-666666666666', manualDossierConfirmation: { confirmed: true, dossierName: 'exp-prueba-001', declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toEqual({ kind: 'success', value: { outcome: 'approved', requestId: snapshot.id, requestStatus: 'APPROVED', passportId } });
+    await expect(api.approveAdmin?.(snapshot.id, { expectedVersion: 4, idempotencyKey: '66666666-6666-4666-8666-666666666666', manualDossierConfirmation: { confirmed: true, dossierName: 'exp-prueba-001', declarationVersion: 'dossier-v1', categories: ['IDENTITY_FRONT'] } })).resolves.toEqual({ kind: 'success', value: { outcome: 'approved', requestId: snapshot.id, requestStatus: 'APPROVED', passportId, passportState: 'ACTIVE' } });
   });
 });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { authTokens } from '../../../../src/design/tokens';
 import { AuthAlert, AuthButton } from '../../../../src/design/components/auth-primitives';
@@ -8,6 +8,7 @@ import { PASSPORT_NOTICE_MESSAGES, usePassportState, type PassportStateNotice } 
 
 export default function ActivatePassportRoute() {
   const { passportId } = useLocalSearchParams<{ passportId?: string }>();
+  const router = useRouter();
   const passport = usePassportState();
   const [notice, setNotice] = useState<PassportStateNotice | null>(null);
 
@@ -19,7 +20,9 @@ export default function ActivatePassportRoute() {
   const handleActivate = async () => {
     setNotice(null);
     const result = await passport.activate(passportId);
-    if (result.kind !== 'success') setNotice(result.kind);
+    if (result.kind !== 'success') { setNotice(result.kind); return; }
+    if (result.value.passportId === passportId && result.value.lifecycleState === 'ACTIVE')
+      router.replace(`/admin/custody/${encodeURIComponent(passportId)}` as never);
   };
 
   return (

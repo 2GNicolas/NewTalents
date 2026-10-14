@@ -5,6 +5,10 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: jest.fn(() => ({ passportId: '44444444-4444-4444-8444-444444444444' })),
 }));
 
+jest.mock('../../src/authentication/authentication-provider', () => ({
+  useAuthentication: () => ({ getAccessToken: () => 'synthetic-token' }),
+}));
+
 jest.mock('../../src/passport/passport-state', () => ({
   usePassportState: () => ({
     state: {

@@ -74,6 +74,7 @@ export type AdminOperationResult = Readonly<{
   requestId?: string;
   requestStatus?: RegistrationRequestStatus;
   passportId?: string;
+  passportState?: string;
 }>;
 
 export type RegistrationApiResult<T> =
@@ -323,7 +324,7 @@ async function classifyAdminOperation(response: Response): Promise<RegistrationA
     if (!outcomes.includes(String(value.outcome))) return { kind: 'invalid-response' };
     const result = value.result && typeof value.result === 'object' ? value.result as Record<string, unknown> : undefined;
     const passport = result?.passport && typeof result.passport === 'object' ? result.passport as Record<string, unknown> : undefined;
-    return { kind: 'success', value: Object.freeze({ outcome: value.outcome as AdminOperationResult['outcome'], ...(typeof value.requestId === 'string' ? { requestId: value.requestId } : {}), ...(isOneOf(value.requestStatus, REGISTRATION_REQUEST_STATUSES) ? { requestStatus: value.requestStatus } : {}), ...(typeof passport?.id === 'string' ? { passportId: passport.id } : {}) }) };
+    return { kind: 'success', value: Object.freeze({ outcome: value.outcome as AdminOperationResult['outcome'], ...(typeof value.requestId === 'string' ? { requestId: value.requestId } : {}), ...(isOneOf(value.requestStatus, REGISTRATION_REQUEST_STATUSES) ? { requestStatus: value.requestStatus } : {}), ...(typeof passport?.id === 'string' ? { passportId: passport.id } : {}), ...(typeof passport?.state === 'string' ? { passportState: passport.state } : {}) }) };
   } catch { return { kind: 'invalid-response' }; }
 }
 

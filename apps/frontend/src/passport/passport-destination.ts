@@ -1,7 +1,8 @@
 import type { PassportSummaryResponse } from './passport-types';
 export type PassportDestination = Readonly<{ href: string; label: string }>;
 export function getPassportDestination(passport: PassportSummaryResponse): PassportDestination {
-  return { href: `/passports/${encodeURIComponent(passport.passportId)}/sections/resumen`, label: 'Ver pasaporte' };
+  const base = `/passports/${encodeURIComponent(passport.passportId)}`;
+  return { href: passport.lifecycleState === 'ACTIVE' ? base : `${base}/sections/resumen`, label: 'Ver pasaporte' };
 }
 
 export function getAuthorizedPassportDestination(passports: readonly PassportSummaryResponse[]): PassportDestination | null {

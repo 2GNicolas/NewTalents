@@ -1,0 +1,145 @@
+openapi: 3.1.0
+info:
+  title: Feature 009 First Match Passport API
+  version: 0.1.0
+  description: Planning contract for authorized first-match scheduling. All responses are no-store; authority is rechecked server-side.
+paths:
+  /passports/{passportId}/first-match:
+    get:
+      operationId: getFirstMatchFlow
+      summary: Read invitation, waiting, or loaded state for an authorized responsible actor
+      parameters: [{ $ref: '#/components/parameters/PassportId' }]
+      responses:
+        '200': { description: Authorized flow, content: { application/json: { schema: { $ref: '#/components/schemas/Flow' } } } }
+        '404': { $ref: '#/components/responses/Hidden' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+    post:
+      operationId: scheduleFirstMatch
+      summary: Create exactly one waiting first match and reserved unit
+      parameters: [{ $ref: '#/components/parameters/PassportId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ScheduleCommand' } } } }
+      responses:
+        '200': { description: Applied or same-intent replay, content: { application/json: { schema: { $ref: '#/components/schemas/Flow' } } } }
+        '404': { $ref: '#/components/responses/Hidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /passports/{passportId}/first-match/allowance:
+    get:
+      operationId: previewFirstMatchAllowance
+      summary: Preview the effective period and available units for a selected match date; not a reservation
+      parameters:
+        - $ref: '#/components/parameters/PassportId'
+        - { name: matchDate, in: query, required: true, schema: { $ref: '#/components/schemas/Date' } }
+      responses:
+        '200': { description: Authorized live availability, content: { application/json: { schema: { $ref: '#/components/schemas/Availability' } } } }
+        '404': { $ref: '#/components/responses/Hidden' }
+        '422': { $ref: '#/components/responses/Invalid' }
+  /passports/{passportId}/first-match/{matchId}:
+    put:
+      operationId: rescheduleFirstMatch
+      summary: Change the same waiting match and move its reserved unit atomically
+      parameters: [{ $ref: '#/components/parameters/PassportId' }, { $ref: '#/components/parameters/MatchId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RescheduleCommand' } } } }
+      responses:
+        '200': { description: Applied or same-intent replay, content: { application/json: { schema: { $ref: '#/components/schemas/Flow' } } } }
+        '404': { $ref: '#/components/responses/Hidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /passports/{passportId}/first-match/{matchId}/cancel:
+    post:
+      operationId: cancelFirstMatch
+      summary: Release a waiting match's reserved unit exactly once
+      parameters: [{ $ref: '#/components/parameters/PassportId' }, { $ref: '#/components/parameters/MatchId' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MutationCommand' } } } }
+      responses:
+        '200': { description: Applied or same-intent replay; invitation when eligible, content: { application/json: { schema: { $ref: '#/components/schemas/Flow' } } } }
+        '404': { $ref: '#/components/responses/Hidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+components:
+  parameters:
+    PassportId: { name: passportId, in: path, required: true, schema: { type: string, format: uuid } }
+    MatchId: { name: matchId, in: path, required: true, schema: { type: string, format: uuid } }
+  schemas:
+    Date: { type: string, format: date, pattern: '^\d{4}-\d{2}-\d{2}$' }
+    Time: { type: string, pattern: '^([01]\d|2[0-3]):[0-5]\d$' }
+    MatchFields:
+      type: object
+      required: [matchDate, matchTime, opponent, competition, venue]
+      properties:
+        matchDate: { $ref: '#/components/schemas/Date' }
+        matchTime: { $ref: '#/components/schemas/Time' }
+        opponent: { type: string, minLength: 1, maxLength: 160 }
+        competition: { type: string, minLength: 1, maxLength: 160 }
+        venue: { type: string, minLength: 1, maxLength: 160 }
+    MutationCommand:
+      type: object
+      required: [expectedVersion, idempotencyKey]
+      properties:
+        expectedVersion: { type: integer, minimum: 0 }
+        idempotencyKey: { type: string, format: uuid }
+    ScheduleCommand:
+      allOf:
+        - $ref: '#/components/schemas/MutationCommand'
+        - $ref: '#/components/schemas/MatchFields'
+      unevaluatedProperties: false
+      description: expectedVersion is 0 when no current first match exists.
+    RescheduleCommand:
+      allOf:
+        - $ref: '#/components/schemas/MutationCommand'
+        - $ref: '#/components/schemas/MatchFields'
+      unevaluatedProperties: false
+    Availability:
+      type: object
+      additionalProperties: false
+      required: [configured, matchDate]
+      properties:
+        configured: { type: boolean }
+        matchDate: { $ref: '#/components/schemas/Date' }
+        periodStart: { $ref: '#/components/schemas/Date' }
+        periodEndExclusive: { $ref: '#/components/schemas/Date' }
+        cadence: { type: string, enum: [MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL] }
+        limit: { type: integer, minimum: 1 }
+        reserved: { type: integer, minimum: 0 }
+        used: { type: integer, minimum: 0 }
+        available: { type: integer, minimum: 0 }
+      description: When configured=false, omit period/count fields; absence is not zero capacity. Preview is advisory, not a held slot.
+    MatchSummary:
+      type: object
+      additionalProperties: false
+      required: [id, version, matchDate, matchTime, opponent, competition, venue, state]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        matchDate: { $ref: '#/components/schemas/Date' }
+        matchTime: { $ref: '#/components/schemas/Time' }
+        opponent: { type: string }
+        competition: { type: string }
+        venue: { type: string }
+        state: { type: string, enum: [WAITING, LOADED] }
+      description: Safe responsible-facing data only; no civil identity, internal Analyst information or sports metrics.
+    Flow:
+      type: object
+      additionalProperties: false
+      required: [passportId, state, allowedActions]
+      properties:
+        passportId: { type: string, format: uuid }
+        state: { type: string, enum: [INVITATION, WAITING, LOADED, RESTRICTED, UNAVAILABLE] }
+        match: { $ref: '#/components/schemas/MatchSummary' }
+        allowance: { $ref: '#/components/schemas/Availability' }
+        allowedActions: { type: array, uniqueItems: true, items: { type: string, enum: [SCHEDULE, RESCHEDULE, CANCEL] } }
+      description: Actions are display hints only; every mutation reauthorizes. A LOADED match never reopens the invitation.
+    SafeError:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code: { type: string, enum: [FIRST_MATCH_NOT_FOUND, FIRST_MATCH_CONFLICT, NO_ALLOWANCE, ALLOWANCE_FULL, INVALID_MATCH, PASSPORT_INELIGIBLE, FIRST_MATCH_UNAVAILABLE] }
+        message: { type: string }
+  responses:
+    Hidden: { description: Missing and unauthorized passport/match IDs are indistinguishable, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    Conflict: { description: Stale version, duplicate distinct intent or capacity race; refresh before retry, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    Invalid: { description: Invalid fields, unconfigured date or full period; no partial mutation, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    Unavailable: { description: Temporary failure; prior match/unit remains intact, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }

@@ -11,6 +11,7 @@ import { PlayerPassportModule } from './player-passport/player-passport.module.j
 import { RegistrationRequestsModule } from './registration-requests/registration-requests.module.js';
 import { PassportCustodyModule } from './passport-custody/passport-custody.module.js';
 import { PassportMatchAllowanceModule } from './passport-match-allowance/passport-match-allowance.module.js';
+import { FirstMatchModule } from './first-match/first-match.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PassportMatchAllowanceModule } from './passport-match-allowance/passpor
     RegistrationRequestsModule,
     PassportCustodyModule,
     PassportMatchAllowanceModule,
+    FirstMatchModule,
   ],
 })
 export class AppModule {}
