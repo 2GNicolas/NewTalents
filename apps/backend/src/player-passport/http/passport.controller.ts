@@ -217,10 +217,10 @@ export class PassportController {
     if (!passport) return this.error(response, 404, 'passport_not_found');
 
     const context = await this.authorizationContext(request.actor.identityId, passport);
-    if (!context.manage && !context.review && !context.activate) return this.error(response, 404, 'passport_not_found');
+    if (!context.manage && !context.review && !context.activate && !context.analystAccess) return this.error(response, 404, 'passport_not_found');
     const capabilities = derivePassportCapabilities(context);
 
-    if (context.manage) {
+    if (context.manage || context.analystAccess) {
       const status: PassportStatusProjection = { ...passport };
       if (passport.state === PassportLifecycleState.RETURNED_FOR_CORRECTION) {
         const latestReturn = await this.prisma.passportReviewReturn.findFirst({
@@ -244,7 +244,7 @@ export class PassportController {
     if (!passport) return this.error(response, 404, 'passport_not_found');
 
     const context = await this.authorizationContext(request.actor.identityId, passport);
-    if (!context.manage && !context.review && !context.activate) return this.error(response, 404, 'passport_not_found');
+    if (!context.manage && !context.review && !context.activate && !context.analystAccess) return this.error(response, 404, 'passport_not_found');
     const displayName = await this.loadDisplayName(passport.playerId);
     const academyOriginName = passport.originAcademyId ? await this.loadAcademyName(passport.originAcademyId) : null;
     return toPassportPresentationResponse({ ...passport, displayName, academyOriginName }, derivePassportCapabilities(context));
@@ -337,7 +337,7 @@ export class PassportController {
 
     const passport = await this.loadPassport(passportId);
     if (!passport) return this.error(response, 404, 'passport_not_found');
-    if (!(await this.canReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
+    if (!(await this.canDecideReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
 
     const result = await this.transactionRunner.execute((transaction) => this.transitions.returnForCorrection(transaction, {
       passportId,
@@ -361,7 +361,7 @@ export class PassportController {
 
     const passport = await this.loadPassport(passportId);
     if (!passport) return this.error(response, 404, 'passport_not_found');
-    if (!(await this.canReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
+    if (!(await this.canDecideReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
 
     const result = await this.transactionRunner.execute(async (transaction) => {
       const signal = await transaction.passportPossibleDuplicateSignal.findFirst({
@@ -400,7 +400,7 @@ export class PassportController {
     if (!parsed.ok) return this.error(response, 400, 'invalid_request');
     const passport = await this.loadPassport(passportId);
     if (!passport) return this.error(response, 404, 'passport_not_found');
-    if (!(await this.canReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
+    if (!(await this.canDecideReview(request.actor.identityId, passportId)).allowed) return this.error(response, 403, 'forbidden');
 
     const result = await this.transactionRunner.execute((transaction) => this.transitions.approve(transaction, {
       passportId,
@@ -550,16 +550,21 @@ export class PassportController {
     return this.authorization.authorize({ identityId, permission: 'passport.review', ...(passportId ? { passportId } : {}) });
   }
 
+  private canDecideReview(identityId: string, passportId: string) {
+    return this.authorization.authorize({ identityId, permission: 'passport.review.decision', passportId });
+  }
+
   private canActivate(identityId: string) {
     return this.authorization.authorize({ identityId, permission: 'passport.activate' });
   }
 
   private async authorizationContext(identityId: string, passport: PassportProjection): Promise<PassportCapabilityContext> {
-    const [particularManage, tutorManage, academyManage, review, activate, particularHistory, tutorHistory, academyHistory, internalHistory, unresolved, confirmedExisting] = await Promise.all([
+    const [particularManage, tutorManage, academyManage, review, analystAccess, activate, particularHistory, tutorHistory, academyHistory, internalHistory, unresolved, confirmedExisting] = await Promise.all([
       this.authorization.authorize({ identityId, permission: 'passport.particular.manage', passportId: passport.id }),
       this.authorization.authorize({ identityId, permission: 'passport.tutor.manage', passportId: passport.id }),
       this.authorization.authorize({ identityId, permission: 'passport.academy.manage', passportId: passport.id }),
-      this.authorization.authorize({ identityId, permission: 'passport.review', passportId: passport.id }),
+      this.canDecideReview(identityId, passport.id),
+      this.canReview(identityId, passport.id),
       this.authorization.authorize({ identityId, permission: 'passport.activate', passportId: passport.id }),
       this.authorization.authorize({ identityId, permission: 'passport.history.particular', passportId: passport.id }),
       this.authorization.authorize({ identityId, permission: 'passport.history.tutor', passportId: passport.id }),
@@ -572,6 +577,7 @@ export class PassportController {
     return {
       manage: particularManage.allowed || tutorManage.allowed || academyManage.allowed,
       review: review.allowed,
+      analystAccess: analystAccess.allowed,
       activate: activate.allowed,
       history: particularHistory.allowed || tutorHistory.allowed || academyHistory.allowed || internalHistory.allowed,
       state: passport.state,
@@ -582,7 +588,7 @@ export class PassportController {
 
   private async accessibleCapabilities(identityId: string, passport: PassportProjection): Promise<ReturnType<typeof derivePassportCapabilities> | null> {
     const context = await this.authorizationContext(identityId, passport);
-    if (!context.manage && !context.review && !context.activate) return null;
+    if (!context.manage && !context.review && !context.activate && !context.analystAccess) return null;
     return derivePassportCapabilities(context);
   }
 

@@ -12,6 +12,7 @@ export const permissionCatalog = Object.freeze({
   'passport.tutor.manage': Object.freeze({ roles: ['TUTOR'] as const, academy: false, tutor: true, anonymous: false }),
   'passport.academy.manage': Object.freeze({ roles: ['ACADEMY_USER'] as const, academy: true, tutor: false, anonymous: false }),
   'passport.review': Object.freeze({ roles: ['ANALYST'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'analyst-current-custody' as const }),
+  'passport.review.decision': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false, resourcePolicy: 'admin-passport-in-review' as const }),
   'passport.activate': Object.freeze({ roles: ['ADMINISTRATOR'] as const, academy: false, tutor: false, anonymous: false }),
   'passport.history.tutor': Object.freeze({ roles: ['TUTOR'] as const, academy: false, tutor: true, anonymous: false }),
   'passport.history.particular': Object.freeze({ roles: ['USER'] as const, academy: false, tutor: false, particular: true, anonymous: false }),

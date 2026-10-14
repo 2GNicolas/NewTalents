@@ -102,19 +102,37 @@ describe('Feature 007 Administrator and custody authorization', () => {
     expect(authorization.evaluate(authorizationRequest('passport.review', {
       classification: 'protected',
       analystCustodyActive: true,
+      passportActive: true,
     }, activeAnalyst))).toEqual({ allowed: true, policyVersion: '1' });
     expect(authorization.evaluate(authorizationRequest('passport.review', {
       classification: 'protected',
       analystCustodyActive: false,
+      passportActive: true,
     }, activeAnalyst))).toEqual({ allowed: false, reason: 'insufficient-resource-facts', policyVersion: '1' });
     expect(authorization.evaluate(authorizationRequest('passport.review', {
       classification: 'protected',
       analystCustodyActive: true,
+      passportActive: true,
     }, { ...activeAnalyst, roles: [{ role: 'ANALYST', active: false }] }))).toEqual({
       allowed: false,
       reason: 'no-active-role',
       policyVersion: '1',
     });
+  });
+
+  it('keeps Analyst review on ACTIVE custody and administrative decisions on IN_REVIEW', () => {
+    expect(authorization.evaluate(authorizationRequest('passport.review', {
+      classification: 'protected', passportActive: false, analystCustodyActive: true,
+    }, activeAnalyst)).allowed).toBe(false);
+    expect(authorization.evaluate(authorizationRequest('passport.review.decision', {
+      classification: 'protected', passportInReview: true,
+    }, activeAdministrator)).allowed).toBe(true);
+    expect(authorization.evaluate(authorizationRequest('passport.review.decision', {
+      classification: 'protected', passportInReview: true,
+    }, activeAnalyst)).allowed).toBe(false);
+    expect(authorization.evaluate(authorizationRequest('passport.review.decision', {
+      classification: 'protected', passportInReview: false,
+    }, activeAdministrator)).allowed).toBe(false);
   });
 
   it('projects Feature 007 capabilities only from active role assignments', () => {

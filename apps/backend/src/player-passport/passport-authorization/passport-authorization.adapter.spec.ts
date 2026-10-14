@@ -156,7 +156,7 @@ describe('PassportAuthorizationAdapter', () => {
     }));
   });
 
-  it('loads current custody but not membership or tutor facts for an internal review decision', async () => {
+  it('loads current custody and ACTIVE status for Analyst access without owner facts', async () => {
     const prisma = {
       identity: {
         findUnique: vi.fn().mockResolvedValue({
@@ -166,7 +166,7 @@ describe('PassportAuthorizationAdapter', () => {
         }),
       },
       academyMembership: { findFirst: vi.fn() },
-      playerPassport: { findUnique: vi.fn().mockResolvedValue({ id: passportId }) },
+      playerPassport: { findUnique: vi.fn().mockResolvedValue({ id: passportId, state: 'ACTIVE' }) },
       passportCustody: { findUnique: vi.fn().mockResolvedValue({ currentAnalystIdentityId: identityId }) },
       initialTutorResponsibility: { findUnique: vi.fn() },
     };
@@ -184,7 +184,7 @@ describe('PassportAuthorizationAdapter', () => {
     expect(prisma.passportCustody.findUnique).toHaveBeenCalledWith({ where: { passportId }, select: { currentAnalystIdentityId: true } });
     expect(prisma.initialTutorResponsibility.findUnique).not.toHaveBeenCalled();
     expect(authorization.evaluate).toHaveBeenCalledWith(expect.objectContaining({
-      resource: { classification: 'protected', resourceId: passportId, analystCustodyActive: true },
+      resource: { classification: 'protected', resourceId: passportId, passportActive: true, passportInReview: false, analystCustodyActive: true },
       subject: expect.not.objectContaining({
         academyMembership: expect.anything(),
         tutorRelationship: expect.anything(),

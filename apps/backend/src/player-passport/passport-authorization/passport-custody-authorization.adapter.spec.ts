@@ -8,12 +8,12 @@ const analystId = '11111111-1111-4111-8111-111111111111';
 const otherAnalystId = '22222222-2222-4222-8222-222222222222';
 const passportId = '33333333-3333-4333-8333-333333333333';
 
-function prisma(input: Readonly<{ status?: 'ACTIVE' | 'INACTIVE'; role?: 'ANALYST' | 'ADMINISTRATOR'; custodian?: string | null; passport?: boolean }> = {}) {
+function prisma(input: Readonly<{ status?: 'ACTIVE' | 'INACTIVE'; role?: 'ANALYST' | 'ADMINISTRATOR'; custodian?: string | null; passport?: boolean; passportState?: 'IN_REVIEW' | 'ACTIVE' }> = {}) {
   const custodian = Object.prototype.hasOwnProperty.call(input, 'custodian') ? input.custodian ?? null : analystId;
   return {
     identity: { findUnique: vi.fn().mockResolvedValue({ status: input.status ?? 'ACTIVE', roleAssignments: [{ role: input.role ?? 'ANALYST' }], analystOperationalProfile: { identityId: analystId } }) },
     passportCustody: { findUnique: vi.fn().mockResolvedValue(input.passport === false ? null : { currentAnalystIdentityId: custodian }) },
-    playerPassport: { findUnique: vi.fn().mockResolvedValue(input.passport === false ? null : { id: passportId }) },
+    playerPassport: { findUnique: vi.fn().mockResolvedValue(input.passport === false ? null : { id: passportId, state: input.passportState ?? 'ACTIVE' }) },
     academyMembership: { findFirst: vi.fn() },
     initialTutorResponsibility: { findUnique: vi.fn() },
     passportResponsibility: { findFirst: vi.fn() },
@@ -35,9 +35,25 @@ describe('PassportAuthorizationAdapter current custody', () => {
       prisma({ role: 'ADMINISTRATOR' }),
       prisma({ custodian: null }),
       prisma({ passport: false }),
+      prisma({ passportState: 'IN_REVIEW' }),
     ]) {
       const adapter = new PassportAuthorizationAdapter(database as never, new AuthorizationService());
       await expect(adapter.authorize({ identityId: analystId, permission: 'passport.review', passportId })).resolves.toMatchObject({ allowed: false });
+    }
+  });
+
+  it('allows administrative review decisions only on IN_REVIEW passports, without Analyst custody', async () => {
+    const activeReview = new PassportAuthorizationAdapter(prisma({ role: 'ADMINISTRATOR', passportState: 'IN_REVIEW', custodian: null }) as never, new AuthorizationService());
+    await expect(activeReview.authorize({ identityId: analystId, permission: 'passport.review.decision', passportId })).resolves.toMatchObject({ allowed: true });
+    await expect(activeReview.authorize({ identityId: analystId, permission: 'passport.review', passportId })).resolves.toMatchObject({ allowed: false });
+
+    for (const database of [
+      prisma({ role: 'ANALYST', passportState: 'IN_REVIEW' }),
+      prisma({ role: 'ADMINISTRATOR', passportState: 'ACTIVE' }),
+      prisma({ role: 'ADMINISTRATOR', status: 'INACTIVE', passportState: 'IN_REVIEW' }),
+    ]) {
+      const adapter = new PassportAuthorizationAdapter(database as never, new AuthorizationService());
+      await expect(adapter.authorize({ identityId: analystId, permission: 'passport.review.decision', passportId })).resolves.toMatchObject({ allowed: false });
     }
   });
 

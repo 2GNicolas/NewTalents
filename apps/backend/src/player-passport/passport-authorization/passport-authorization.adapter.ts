@@ -14,6 +14,7 @@ export type PassportPermission =
   | 'passport.tutor.manage'
   | 'passport.academy.manage'
   | 'passport.review'
+  | 'passport.review.decision'
   | 'passport.activate'
   | 'passport.history.tutor'
   | 'passport.history.particular'
@@ -32,6 +33,8 @@ type ResourceFacts = {
   academyId?: string;
   resourceId?: string;
   analystCustodyActive?: boolean;
+  passportActive?: boolean;
+  passportInReview?: boolean;
 };
 
 type ActiveMembership = Readonly<{ academyId: string; status: 'ACTIVE' | 'ENDED' }>;
@@ -47,6 +50,7 @@ const PASSPORT_PERMISSIONS = new Set<Permission>([
   'passport.tutor.manage',
   'passport.academy.manage',
   'passport.review',
+  'passport.review.decision',
   'passport.activate',
   'passport.history.tutor',
   'passport.history.particular',
@@ -98,16 +102,20 @@ export class PassportAuthorizationAdapter {
     let passport: Readonly<{ playerId: string; originAcademyId: string | null; createdByIdentityId: string; responsibilities: ReadonlyArray<{ kind: string; academyId: string | null }> }> | null = null;
 
     const resourcePolicy = 'resourcePolicy' in rule ? rule.resourcePolicy : undefined;
-    if (request.passportId && (resourcePolicy === 'analyst-current-custody' || resourcePolicy === 'administrator-or-analyst-custody')) {
+    if (request.passportId && (resourcePolicy === 'analyst-current-custody' || resourcePolicy === 'administrator-or-analyst-custody' || resourcePolicy === 'admin-passport-in-review')) {
       if (!UUID_PATTERN.test(request.passportId)) return this.deny('insufficient-resource-facts');
-      const passport = await this.prisma.playerPassport.findUnique({ where: { id: request.passportId }, select: { id: true } });
+      const passport = await this.prisma.playerPassport.findUnique({ where: { id: request.passportId }, select: { id: true, state: true } });
       if (!passport) return this.deny('insufficient-resource-facts');
-      const custody = await this.prisma.passportCustody.findUnique({
-        where: { passportId: request.passportId },
-        select: { currentAnalystIdentityId: true },
-      });
-      resource.analystCustodyActive = identity.analystOperationalProfile?.identityId === request.identityId
-        && custody?.currentAnalystIdentityId === request.identityId;
+      resource.passportActive = passport.state === 'ACTIVE';
+      resource.passportInReview = passport.state === 'IN_REVIEW';
+      if (resourcePolicy !== 'admin-passport-in-review') {
+        const custody = await this.prisma.passportCustody.findUnique({
+          where: { passportId: request.passportId },
+          select: { currentAnalystIdentityId: true },
+        });
+        resource.analystCustodyActive = identity.analystOperationalProfile?.identityId === request.identityId
+          && custody?.currentAnalystIdentityId === request.identityId;
+      }
       resource.resourceId = request.passportId;
     } else if (request.passportId && (rule.tutor || rule.academy || ('particular' in rule && rule.particular))) {
       if (!UUID_PATTERN.test(request.passportId)) return this.deny('insufficient-resource-facts');

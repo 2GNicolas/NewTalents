@@ -121,7 +121,7 @@ export class LocalReviewProvisioningService {
       const passportId = definition.context === 'HISTORICAL_TUTOR'
         ? await this.ensureHistoricalTutorPassport(definition, this.requiredIdentity(identities, definition.owner))
         : await this.ensureModernPassport(definition, this.requiredIdentity(identities, definition.owner), academy.id);
-      await this.advance(passportId, definition.targetState, this.requiredIdentity(identities, definition.owner), this.requiredIdentity(identities, 'analyst'), administratorId);
+      await this.advance(passportId, definition.targetState, this.requiredIdentity(identities, definition.owner), administratorId);
       const stored = await this.prisma.playerPassport.findUniqueOrThrow({ where: { id: passportId }, select: { state: true } });
       if (stored.state !== definition.targetState) throw new Error(`review-state-${definition.key}-${stored.state}`);
       provisioned.push({ key: definition.key, passportId, state: stored.state });
@@ -231,7 +231,7 @@ export class LocalReviewProvisioningService {
     return created.passportId;
   }
 
-  private async advance(passportId: string, target: PassportLifecycleState, actorIdentityId: string, analystIdentityId: string, administratorIdentityId: string): Promise<void> {
+  private async advance(passportId: string, target: PassportLifecycleState, actorIdentityId: string, administratorIdentityId: string): Promise<void> {
     let current = await this.prisma.playerPassport.findUniqueOrThrow({ where: { id: passportId }, select: { state: true } });
     if (current.state === target) return;
     if (current.state === 'DRAFT' && target !== 'DRAFT') {
@@ -240,7 +240,7 @@ export class LocalReviewProvisioningService {
       current = { state: result.state };
     }
     if (target === 'RETURNED_FOR_CORRECTION' && current.state === 'IN_REVIEW') {
-      const result = await this.passportTransactions.execute((tx) => this.transitions.returnForCorrection(tx, { passportId, analystIdentityId, reason: 'Ajustar informacion deportiva declarada' }));
+      const result = await this.passportTransactions.execute((tx) => this.transitions.returnForCorrection(tx, { passportId, analystIdentityId: administratorIdentityId, reason: 'Ajustar informacion deportiva declarada' }));
       if (result.outcome !== 'applied') throw new Error(`review-return-${result.outcome}`);
       current = { state: result.state };
     }
@@ -250,7 +250,7 @@ export class LocalReviewProvisioningService {
       current = { state: result.state };
     }
     if (current.state === 'IN_REVIEW' && ['APPROVED', 'ACTIVE'].includes(target)) {
-      const result = await this.passportTransactions.execute((tx) => this.transitions.approve(tx, { passportId, analystIdentityId }));
+      const result = await this.passportTransactions.execute((tx) => this.transitions.approve(tx, { passportId, analystIdentityId: administratorIdentityId }));
       if (result.outcome !== 'applied') throw new Error(`review-approve-${result.outcome}`);
       current = { state: result.state };
     }

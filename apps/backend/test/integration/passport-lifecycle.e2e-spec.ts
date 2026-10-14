@@ -195,7 +195,7 @@ describe('Feature 005 passport lifecycle integration', () => {
       .expect((response) => expect(response.body).toMatchObject({ code: 'passport_not_found' }));
   });
 
-  it('denies unassigned Analyst review and premature activation while retaining redacted history', async () => {
+  it('keeps unauthorized actors out while the Administrator reviews, approves and activates without custody', async () => {
     await request(app.getHttpServer())
       .post(`/passports/${tutorPassportId}/submit`)
       .set('Authorization', `Bearer ${tutorToken}`)
@@ -209,6 +209,24 @@ describe('Feature 005 passport lifecycle integration', () => {
       .set('Authorization', `Bearer ${analystToken}`)
       .send({})
       .expect(403);
+
+    for (const token of [tutorToken, strangerToken]) {
+      await request(app.getHttpServer())
+        .post(`/passports/${tutorPassportId}/return`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ reason: 'Corrección necesaria' })
+        .expect(403);
+      await request(app.getHttpServer())
+        .post(`/passports/${tutorPassportId}/possible-duplicate/resolve`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ resolution: 'DIFFERENT_PLAYERS' })
+        .expect(403);
+      await request(app.getHttpServer())
+        .post(`/passports/${tutorPassportId}/approve`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({})
+        .expect(403);
+    }
 
     await request(app.getHttpServer())
       .post(`/passports/${tutorPassportId}/possible-duplicate/resolve`)
@@ -230,6 +248,37 @@ describe('Feature 005 passport lifecycle integration', () => {
 
     expect((await prisma.playerPassport.findUniqueOrThrow({ where: { id: tutorPassportId } })).state).toBe('IN_REVIEW');
     expect(await prisma.passportPossibleDuplicateSignal.count({ where: { passportId: tutorPassportId, status: 'UNRESOLVED' } })).toBe(1);
+
+    await request(app.getHttpServer())
+      .post(`/passports/${tutorPassportId}/approve`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(409);
+    await request(app.getHttpServer())
+      .post(`/passports/${tutorPassportId}/possible-duplicate/resolve`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ resolution: 'DIFFERENT_PLAYERS' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/passports/${tutorPassportId}/approve`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+    expect((await prisma.playerPassport.findUniqueOrThrow({ where: { id: tutorPassportId } })).state).toBe('APPROVED');
+    expect(await prisma.passportCustody.count({ where: { passportId: tutorPassportId } })).toBe(0);
+    await request(app.getHttpServer())
+      .post(`/passports/${tutorPassportId}/activate`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({})
+      .expect(200);
+    expect((await prisma.playerPassport.findUniqueOrThrow({ where: { id: tutorPassportId } })).state).toBe('ACTIVE');
+    expect(await prisma.passportCustody.count({ where: { passportId: tutorPassportId } })).toBe(0);
+    const decisions = await prisma.passportLifecycleEvent.findMany({
+      where: { passportId: tutorPassportId, action: { in: ['POSSIBLE_DUPLICATE_RESOLVED', 'APPROVED', 'ACTIVATED'] } },
+      select: { action: true, actorIdentityId: true },
+    });
+    expect(decisions).toHaveLength(3);
+    expect(decisions.every((decision) => decision.actorIdentityId === adminIdentity)).toBe(true);
 
     const history = await request(app.getHttpServer())
       .get(`/passports/${tutorPassportId}/history`)

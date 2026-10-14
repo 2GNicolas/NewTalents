@@ -15,6 +15,7 @@ export type PassportCollectionAction = (typeof PASSPORT_COLLECTION_ACTIONS)[numb
 export type PassportCapabilityContext = Readonly<{
   manage: boolean;
   review: boolean;
+  analystAccess?: boolean;
   activate: boolean;
   history: boolean;
   state: PassportLifecycleState;

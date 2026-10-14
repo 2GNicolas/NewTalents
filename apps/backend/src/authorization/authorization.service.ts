@@ -98,12 +98,13 @@ export class AuthorizationService {
       return allow();
     }
     if (policy === 'analyst-current-custody') {
-      return resource.analystCustodyActive === true ? allow() : deny('insufficient-resource-facts');
+      return resource.passportActive === true && resource.analystCustodyActive === true ? allow() : deny('insufficient-resource-facts');
     }
+    if (policy === 'admin-passport-in-review') return resource.passportInReview === true ? allow() : deny('insufficient-resource-facts');
     if (policy === 'administrator-or-analyst-custody') {
       const administrator = subject.kind === 'authenticated'
         && subject.roles.some((assignment) => assignment.active && assignment.role === 'ADMINISTRATOR');
-      return administrator || resource.analystCustodyActive === true ? allow() : deny('insufficient-resource-facts');
+      return administrator || (resource.passportActive === true && resource.analystCustodyActive === true) ? allow() : deny('insufficient-resource-facts');
     }
     if (resource.administratorCapability !== true) return deny('insufficient-resource-facts');
     if (policy === 'admin-custody-list' || policy === 'admin-custody-list-analysts') return allow();

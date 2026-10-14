@@ -29,6 +29,7 @@ export type ResourceFacts = Readonly<{
   passportBasicActive?: boolean;
   passportExists?: boolean;
   passportActive?: boolean;
+  passportInReview?: boolean;
   custodyVersionCurrent?: boolean;
   custodyAssigned?: boolean;
   targetAnalystEligible?: boolean;
