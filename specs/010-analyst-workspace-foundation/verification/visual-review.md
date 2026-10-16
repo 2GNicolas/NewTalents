@@ -8,7 +8,7 @@ Fecha: 2026-10-15. Chrome real autenticado contra API Nest y Expo Web locales, c
 | Pasaportes | [Captura](screenshots/02-pasaportes-desktop.jpg) | [Captura](screenshots/05-pasaportes-mobile.jpg) | Tarjetas de custodia, nombre autorizado, referencia complementaria, partido próximo solo si existe y apertura de detalle. |
 | Partidos | [Captura](screenshots/03-partidos-desktop.jpg) | [Captura](screenshots/06-partidos-mobile.jpg) | Agenda agrupada por fecha, rival/competencia/sede/estado y «Ver partido» de solo lectura. |
 
-La comparación se hizo respectivamente con `New Talents analyst workload overview-1.png`, `Mobile analyst dashboard with pending analyses-2.png`, `Analyst passport custody dashboard.png`, `Active passport custody dashboard.png`, `Emerald Match Agenda for Analysts.png` y `New Talents match agenda.png` en `docs/design/analist/`. Los nombres, conteos, referencias y ejemplos de esos diseños no se usaron como datos reales.
+La comparación se hizo respectivamente con `New Talents analyst workload overview-1.png`, `Mobile analyst dashboard with pending analyses-2.png`, `Analyst passport custody dashboard.png`, `Active passport custody dashboard.png`, `Emerald Match Agenda for Analysts.png` y `New Talents match agenda.png`. Estas referencias aprobadas se conservan fuera del repositorio; sus nombres, conteos y ejemplos no se usaron como datos reales.
 
 ## Recorridos y estados observados
 

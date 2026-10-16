@@ -8,7 +8,7 @@
 
 **Enmienda de privacidad y contacto (2026-10-15)**: El propietario autoriza el nombre del jugador y el teléfono/correo disponibles de la persona definida por el tipo de pasaporte para el Analista con custodia vigente de un pasaporte `ACTIVE`. Si no se identifica inequívocamente al responsable actual, no se divulga el contacto de otra persona.
 
-**Input**: Entrada autenticada del Analista y vistas Inicio, Pasaportes y Partidos para consultar partidos de pasaportes `ACTIVE` bajo su custodia vigente, sin limitarse al primer partido. Las seis imágenes de `docs/design/analist/` son referencias visuales aprobadas. Se respetan la revisión y activación administrativas separadas, la asignación manual de custodia y la privacidad. Esta entrega no captura ni analiza datos deportivos, no confirma cargas ni implementa FEM, pagos o gestión de programación.
+**Input**: Entrada autenticada del Analista y vistas Inicio, Pasaportes y Partidos para consultar partidos de pasaportes `ACTIVE` bajo su custodia vigente, sin limitarse al primer partido. Las seis imágenes identificadas por nombre más abajo son referencias visuales aprobadas y se conservan fuera del repositorio. Se respetan la revisión y activación administrativas separadas, la asignación manual de custodia y la privacidad. Esta entrega no captura ni analiza datos deportivos, no confirma cargas ni implementa FEM, pagos o gestión de programación.
 
 ## Clarifications
 
@@ -160,13 +160,13 @@ El Analista pierde acceso a un pasaporte, sus partidos y cualquier resumen deriv
 
 ## Referencias visuales aprobadas y límites de datos
 
-Las seis imágenes proporcionadas para este espacio están en `docs/design/analist/`. Gobiernan composición, jerarquía, navegación lateral en escritorio y navegación inferior en móvil; no autorizan datos ni acciones por sí mismas.
+Las seis imágenes proporcionadas para este espacio se conservan fuera del repositorio, identificadas por los nombres siguientes. Gobiernan composición, jerarquía, navegación lateral en escritorio y navegación inferior en móvil; no autorizan datos ni acciones por sí mismas.
 
 | Vista | Escritorio | Móvil |
 |---|---|---|
-| Inicio | `docs/design/analist/New Talents analyst workload overview-1.png` | `docs/design/analist/Mobile analyst dashboard with pending analyses-2.png` |
-| Pasaportes | `docs/design/analist/Analyst passport custody dashboard.png` | `docs/design/analist/Active passport custody dashboard.png` |
-| Partidos | `docs/design/analist/Emerald Match Agenda for Analysts.png` | `docs/design/analist/New Talents match agenda.png` |
+| Inicio | `New Talents analyst workload overview-1.png` | `Mobile analyst dashboard with pending analyses-2.png` |
+| Pasaportes | `Analyst passport custody dashboard.png` | `Active passport custody dashboard.png` |
+| Partidos | `Emerald Match Agenda for Analysts.png` | `New Talents match agenda.png` |
 
 Los ejemplos de “Borrador guardado”, “Continuar”, “Análisis realizados” y “Ver historial” no prueban que existan borradores, análisis completados o navegación a su historial. “Orden propuesto: fecha programada ascendente · pendiente de aprobación” tampoco aprueba una regla de orden ni agrega una decisión administrativa sobre partidos. Cuando falte la fuente, se conserva la sección visual con un estado honesto, no con registros de ejemplo.
 

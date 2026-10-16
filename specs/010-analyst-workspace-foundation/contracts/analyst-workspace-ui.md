@@ -1,12 +1,12 @@
 # UI contract: Inicio, Pasaportes y Partidos del Analista
 
-Estas son referencias de composición, no fuentes de datos. La interfaz web usa la ruta autenticada real y la proyección de `analyst-workspace.openapi.yaml`; no copia personas, cifras ni estados de ejemplo. El acceso se comprueba en backend aunque exista enlace o elemento visible.
+Estas son referencias de composición conservadas fuera del repositorio e identificadas por nombre, no fuentes de datos. La interfaz web usa la ruta autenticada real y la proyección de `analyst-workspace.openapi.yaml`; no copia personas, cifras ni estados de ejemplo. El acceso se comprueba en backend aunque exista enlace o elemento visible.
 
 | Vista | Referencia escritorio | Referencia viewport móvil | Jerarquía conservada |
 |---|---|---|---|
-| Inicio | `docs/design/analist/New Talents analyst workload overview-1.png` | `docs/design/analist/Mobile analyst dashboard with pending analyses-2.png` | Encabezado del espacio; Análisis pendientes; Próximos partidos con “Ver calendario”; Análisis realizados con no disponibilidad honesta. |
-| Pasaportes | `docs/design/analist/Analyst passport custody dashboard.png` | `docs/design/analist/Active passport custody dashboard.png` | Título y contexto de custodia; tarjetas `ACTIVE` propias con nombre autorizado del jugador y referencia operativa, estado de asignación, próximo partido real si existe y “Abrir pasaporte”. |
-| Partidos | `docs/design/analist/Emerald Match Agenda for Analysts.png` | `docs/design/analist/New Talents match agenda.png` | Agenda por fecha; rival, competencia, sede, hora y estado permitidos; “Ver partido” hacia detalle de solo lectura. |
+| Inicio | `New Talents analyst workload overview-1.png` | `Mobile analyst dashboard with pending analyses-2.png` | Encabezado del espacio; Análisis pendientes; Próximos partidos con “Ver calendario”; Análisis realizados con no disponibilidad honesta. |
+| Pasaportes | `Analyst passport custody dashboard.png` | `Active passport custody dashboard.png` | Título y contexto de custodia; tarjetas `ACTIVE` propias con nombre autorizado del jugador y referencia operativa, estado de asignación, próximo partido real si existe y “Abrir pasaporte”. |
+| Partidos | `Emerald Match Agenda for Analysts.png` | `New Talents match agenda.png` | Agenda por fecha; rival, competencia, sede, hora y estado permitidos; “Ver partido” hacia detalle de solo lectura. |
 
 ## Navegación y composición
 
