@@ -1,0 +1,265 @@
+openapi: 3.1.0
+info:
+  title: Analyst workspace read contract
+  version: 0.1.0
+  description: >-
+    Feature 010. Read-only, custody-authorized projections. This contract does not
+    confer match scheduling, load, review or custody mutation capabilities.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+paths:
+  /analyst/workspace/overview:
+    get:
+      operationId: getAnalystOverview
+      summary: Read mutually exclusive pending/upcoming sections and honest completed availability
+      responses:
+        '200':
+          description: Authorized overview; partial preview arrays do not imply total counts
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Overview'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /analyst/workspace/passports:
+    get:
+      operationId: listAnalystWorkspacePassports
+      summary: List ACTIVE passports under current Analyst custody
+      parameters:
+        - {$ref: '#/components/parameters/Cursor'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200':
+          description: Authorized passport page
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PassportPage'}
+        '400': {$ref: '#/components/responses/InvalidQuery'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /analyst/workspace/passports/{passportId}:
+    get:
+      operationId: getAnalystWorkspacePassport
+      summary: Revalidate current custody and read minimal passport detail
+      parameters:
+        - {$ref: '#/components/parameters/PassportId'}
+      responses:
+        '200':
+          description: Authorized detail
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PassportDetail'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFoundSafe'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /analyst/workspace/matches:
+    get:
+      operationId: listAnalystWorkspaceMatches
+      summary: List all confirmed scheduled matches available under current custody, regardless of match order
+      parameters:
+        - {$ref: '#/components/parameters/Cursor'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200':
+          description: Authorized match page; currently sourced by Feature 009
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MatchPage'}
+        '400': {$ref: '#/components/responses/InvalidQuery'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /analyst/workspace/matches/{matchId}:
+    get:
+      operationId: getAnalystWorkspaceMatch
+      summary: Revalidate passport custody and read one match by direct ID
+      parameters:
+        - {$ref: '#/components/parameters/MatchId'}
+      responses:
+        '200':
+          description: Authorized match detail
+          headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MatchDetail'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFoundSafe'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer}
+  headers:
+    NoStore:
+      description: Protected responses must not be cached.
+      schema: {type: string, const: no-store}
+  parameters:
+    PassportId: {name: passportId, in: path, required: true, schema: {type: string, format: uuid}}
+    MatchId: {name: matchId, in: path, required: true, schema: {type: string, format: uuid}}
+    Cursor: {name: cursor, in: query, required: false, schema: {type: string, maxLength: 500}}
+    Limit: {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
+  schemas:
+    EmptyError:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code: {type: string, enum: [unauthenticated, forbidden, not_found, invalid_query, unavailable]}
+    PageInfo:
+      type: object
+      additionalProperties: false
+      required: [hasMore]
+      properties:
+        hasMore: {type: boolean}
+        nextCursor: {type: string}
+    MatchPreview:
+      type: object
+      additionalProperties: false
+      required: [id, matchDate, matchTime, opponent, venue]
+      properties:
+        id: {type: string, format: uuid}
+        matchDate: {type: string, format: date}
+        matchTime: {type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'}
+        opponent: {type: string, maxLength: 160}
+        venue: {type: string, maxLength: 160}
+    PassportCard:
+      type: object
+      additionalProperties: false
+      required: [passportId, maskedReference, playerName, lifecycleState, custodyState]
+      properties:
+        passportId: {type: string, format: uuid}
+        maskedReference: {type: string}
+        playerName: {type: string, minLength: 1, description: Name from the passport player's private identity, projected only after current-custody authorization; no other civil fields.}
+        lifecycleState: {type: string, const: ACTIVE}
+        custodyState: {type: string, const: ASSIGNED_TO_ACTOR}
+        nextMatch: {$ref: '#/components/schemas/MatchPreview'}
+    PassportDetail:
+      type: object
+      additionalProperties: false
+      required: [passportId, maskedReference, playerName, lifecycleState, custodyState, contact]
+      properties:
+        passportId: {type: string, format: uuid}
+        maskedReference: {type: string}
+        playerName: {type: string, minLength: 1}
+        lifecycleState: {type: string, const: ACTIVE}
+        custodyState: {type: string, const: ASSIGNED_TO_ACTOR}
+        nextMatch: {$ref: '#/components/schemas/MatchPreview'}
+        contact: {$ref: '#/components/schemas/WorkContact'}
+      description: >-
+        Player name and selected work contact are authorized only after current-custody checks.
+        No identification, documents, evidence, other civil fields, custody history or assignment
+        capabilities. Contact is unavailable rather than borrowed from another person.
+    WorkContact:
+      oneOf:
+        - {$ref: '#/components/schemas/AvailableWorkContact'}
+        - {$ref: '#/components/schemas/UnavailableWorkContact'}
+    AvailableWorkContact:
+      type: object
+      additionalProperties: false
+      required: [availability, kind]
+      anyOf:
+        - required: [phone]
+        - required: [email]
+      properties:
+        availability: {type: string, const: AVAILABLE}
+        kind: {type: string, enum: [SELF, LEGAL_REPRESENTATIVE, ACADEMY_RESPONSIBLE]}
+        phone: {type: string, minLength: 1, description: Available phone attributable to the selected current person.}
+        email: {type: string, format: email, description: Available account email of the same person.}
+      description: >-
+        Both available channels are returned with no precedence. Personal adult selects SELF;
+        personal minor selects the current legal representative; academy-managed adult/minor selects
+        the current academy responsible person, never an arbitrary additional academy account.
+    UnavailableWorkContact:
+      type: object
+      additionalProperties: false
+      required: [availability]
+      properties:
+        availability: {type: string, const: UNAVAILABLE}
+      description: >-
+        No current responsible person can be identified unambiguously, or neither channel is
+        available. No phone, email, alternate person or sensitive reason is disclosed.
+    PassportPage:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/PassportCard'}}
+        pagination: {$ref: '#/components/schemas/PageInfo'}
+    MatchDetail:
+      type: object
+      additionalProperties: false
+      required: [id, sourceKind, passportId, maskedReference, playerName, matchDate, matchTime, opponent, competition, venue, state]
+      properties:
+        id: {type: string, format: uuid}
+        sourceKind: {type: string, enum: [FIRST_MATCH], description: Extend only when an authoritative source is approved.}
+        passportId: {type: string, format: uuid}
+        maskedReference: {type: string}
+        playerName: {type: string, minLength: 1, description: Name authorized through the match passport's current custody.}
+        matchDate: {type: string, format: date}
+        matchTime: {type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'}
+        opponent: {type: string, maxLength: 160}
+        competition: {type: string, maxLength: 160}
+        venue: {type: string, maxLength: 160}
+        state: {type: string, enum: [WAITING, LOADED]}
+      description: No contact, identification, documents, evidence, load IDs, actor IDs, match units, allowance, sports metrics or unpublished analysis.
+    MatchPage:
+      type: object
+      additionalProperties: false
+      required: [data, pagination]
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/MatchDetail'}}
+        pagination: {$ref: '#/components/schemas/PageInfo'}
+    OverviewSection:
+      type: object
+      additionalProperties: false
+      required: [availability, data, hasMore]
+      properties:
+        availability: {type: string, enum: [AVAILABLE, UNAVAILABLE]}
+        data: {type: array, items: {$ref: '#/components/schemas/MatchDetail'}}
+        hasMore: {type: boolean}
+    CompletedSection:
+      type: object
+      additionalProperties: false
+      required: [availability]
+      properties:
+        availability: {type: string, const: UNAVAILABLE}
+      description: No approved analysis-confirmation source in Feature 010.
+    Overview:
+      type: object
+      additionalProperties: false
+      required: [timeZone, analystLabel, pending, upcoming, completed]
+      properties:
+        timeZone: {type: string, const: America/Bogota}
+        analystLabel: {type: string, minLength: 1, maxLength: 120, description: Current Analyst operational display label, projected only after authorization for the personalized Inicio heading.}
+        pending: {$ref: '#/components/schemas/OverviewSection'}
+        upcoming: {$ref: '#/components/schemas/OverviewSection'}
+        completed: {$ref: '#/components/schemas/CompletedSection'}
+  responses:
+    InvalidQuery:
+      description: Invalid pagination; no protected data
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/EmptyError'}}}
+    Unauthenticated:
+      description: Session absent or invalid
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/EmptyError'}}}
+    Forbidden:
+      description: Analyst role or active identity unavailable; no resource detail
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/EmptyError'}}}
+    NotFoundSafe:
+      description: Same body for foreign and missing resource
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/EmptyError'}}}
+    Unavailable:
+      description: Temporary backend failure; no resource detail
+      headers: {Cache-Control: {$ref: '#/components/headers/NoStore'}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/EmptyError'}}}
