@@ -2,7 +2,7 @@
 
 **Fecha**: 2026-09-30
 **Alcance**: T036 / US3
-**Autoridad visual exclusiva**: `docs/design/admin-custody/passport-custody-workspace-desktop.png` y `passport-custody-workspace-mobile.png`.
+**Autoridad visual exclusiva**: `external:docs/design/admin-custody/passport-custody-workspace-desktop.png` y `passport-custody-workspace-mobile.png`.
 
 ## Capturas
 

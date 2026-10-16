@@ -91,7 +91,7 @@ apps/frontend/
 ├── src/passport/
 ├── src/administrator/
 └── src/first-match/                    # planned state/screens
-docs/design/feature-009/               # six unchanged PNGs
+external:docs/design/feature-009/               # six unchanged PNGs
 ```
 
 **Structure Decision**: Reuse existing identity, custody and allowance boundaries; isolate first-match behavior as an additive module and dedicated frontend flow. No separate service/cache.

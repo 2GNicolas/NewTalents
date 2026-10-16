@@ -8,7 +8,7 @@
 
 Feature 007 reorganiza la operación administrativa existente sin alterar el ciclo de registro y aprobación de Feature 006, añade una consulta independiente y de solo lectura para expedientes confirmados, y crea una custodia explícita entre cada pasaporte básico activo y como máximo un Analista elegible. La solución conserva NestJS, Prisma/PostgreSQL y Expo Router; añade modelos aditivos para progreso operativo, perfil visible del Analista, estado de custodia e historial inmutable; extiende contratos y autorización con hechos de recurso; y hace que la lista y apertura de pasaportes del Analista dependan en tiempo real de la custodia vigente.
 
-La interfaz reutiliza las operaciones de revisión, corrección, rechazo, expediente, eliminación y aprobación existentes. `docs/design/admin-custody/` es la única autoridad visual: proporciona el shell administrativo, la jerarquía, la composición responsiva y la interacción de selección por arrastre. Cuando una referencia muestra acciones sobre expedientes pendientes que la especificación excluye, se conserva su lenguaje visual pero prevalece el alcance funcional aprobado: Expedientes es una consulta de registros ya confirmados, sin edición ni confirmación nueva.
+La interfaz reutiliza las operaciones de revisión, corrección, rechazo, expediente, eliminación y aprobación existentes. `external:docs/design/admin-custody/` es la única autoridad visual: proporciona el shell administrativo, la jerarquía, la composición responsiva y la interacción de selección por arrastre. Cuando una referencia muestra acciones sobre expedientes pendientes que la especificación excluye, se conserva su lenguaje visual pero prevalece el alcance funcional aprobado: Expedientes es una consulta de registros ya confirmados, sin edición ni confirmación nueva.
 
 ## Technical Context
 
@@ -41,7 +41,7 @@ La interfaz reutiliza las operaciones de revisión, corrección, rechazo, expedi
 | Arquitectura explícita y simple | PASS | Se mantienen NestJS/Prisma/Expo y módulos existentes; solo se añaden modelos y servicios requeridos por brechas comprobadas. |
 | Consistencia web/móvil y accesibilidad | PASS | Arrastre es una mejora de escritorio; móvil, teclado y lector usan la misma selección/confirmación mediante acciones semánticas. |
 | Verificación proporcional | PASS | Quickstart y contratos cubren regresión de Feature 006, privacidad, concurrencia, idempotencia, accesibilidad y navegación estable. |
-| Autoridad documental | PASS | `spec.md` gobierna funcionalidad; `docs/design/admin-custody/` gobierna únicamente la presentación. Las imágenes de Feature 006 no se usan. |
+| Autoridad documental | PASS | `spec.md` gobierna funcionalidad; `external:docs/design/admin-custody/` gobierna únicamente la presentación. Las imágenes de Feature 006 no se usan. |
 | Cambio controlado | PASS | Las nuevas capacidades y persistencia quedan documentadas aquí y en contratos/modelo antes de tareas o implementación. |
 
 **Revisión posterior al diseño**: PASS. Los contratos mantienen las mutaciones de Feature 006 intactas, el modelo es aditivo y las decisiones de privacidad y concurrencia están expresadas en artefactos versionables. No se requiere excepción constitucional.
@@ -101,7 +101,7 @@ La interfaz reutiliza las operaciones de revisión, corrección, rechazo, expedi
 
 ### 5. Expo y autoridad visual
 
-- Añadir un shell administrativo compartido con rutas para Inicio, Solicitudes, Expedientes y Custodia; escritorio usa navegación lateral y móvil navegación inferior según `docs/design/admin-custody/`.
+- Añadir un shell administrativo compartido con rutas para Inicio, Solicitudes, Expedientes y Custodia; escritorio usa navegación lateral y móvil navegación inferior según `external:docs/design/admin-custody/`.
 - Adaptar el inbox existente a grupos operativos y conservar los componentes/estados de decisión de Feature 006.
 - Implementar estados dedicados para lista/detalle de expedientes y workspace/detalle de custodia, con carga, vacío, restringido, conflicto, error recuperable e indisponible.
 - En web de escritorio, el gesto de arrastre solo selecciona un Analista y abre confirmación. La selección se implementa como mejora progresiva sobre la misma acción semántica; botones, teclado y lector abren el selector equivalente. En móvil se muestran `Asignar Analista`/`Cambiar Analista`; no se exige arrastre.
@@ -122,7 +122,7 @@ La interfaz reutiliza las operaciones de revisión, corrección, rechazo, expedi
 - Integración PostgreSQL secuencial: unicidad por pasaporte, carreras entre Administradores, reintento serializable, idempotencia, cargas activas, historial único y enlaces de expediente.
 - Frontend: grupos y filtros, restauración de lista, selección por arrastre sin persistencia, alternativa móvil/teclado, confirmación/cancelación, conflicto y estados vacíos/error.
 - Regresión enfocada: decisiones y eliminación de Feature 006 producen los mismos resultados; acceso USER/academia/representante/Administrador de Feature 005 no cambia; solo se restringe la rama Analista al pasaporte bajo custodia.
-- Visual/accesibilidad: comparación uno a uno únicamente con las 12 referencias de `docs/design/admin-custody/`, documentando los elementos visuales fuera de alcance funcional como no interactivos/no implementados.
+- Visual/accesibilidad: comparación uno a uno únicamente con las 12 referencias de `external:docs/design/admin-custody/`, documentando los elementos visuales fuera de alcance funcional como no interactivos/no implementados.
 
 ## Project Structure
 

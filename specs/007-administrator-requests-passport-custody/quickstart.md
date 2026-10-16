@@ -128,7 +128,7 @@ Las suites PostgreSQL de concurrencia se ejecutan secuencialmente con clientes i
 
 1. Ejecutar Solicitudes, Expedientes lista/detalle, Custodia workspace/detalle en ancho escritorio y móvil.
 2. Completar acciones con teclado y lector, foco visible, movimiento reducido y sin color como única señal.
-3. Comparar exclusivamente las 12 referencias de `docs/design/admin-custody/`.
+3. Comparar exclusivamente las 12 referencias de `external:docs/design/admin-custody/`.
 
 **Expected**: navegación Inicio/Solicitudes/Expedientes/Custodia, sin “Administrador autorizado”; drop solo selecciona; alternativa accesible completa; sin scroll horizontal obligatorio.
 

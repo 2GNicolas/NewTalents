@@ -1,6 +1,6 @@
 # New Talents — Administrator custody references
 
-Visual references for the Administrator home, dossier management, and passport custody module. The images preserve the approved Feature 006 Administrator visual system and use synthetic, masked data.
+Visual references for the Administrator home, dossier management, and passport custody module. The images preserve the approved Feature 006 Administrator visual system and use synthetic, masked data. These twelve PNGs are now held outside the repository; the names below correspond to the `docs/design/admin-custody/` group in [the external image inventory](../../reference-image-archive.md).
 
 | Screen | Desktop — 1440 × 1024 | Mobile — 390 × 844 |
 |---|---|---|

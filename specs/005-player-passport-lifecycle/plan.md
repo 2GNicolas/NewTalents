@@ -19,7 +19,7 @@ The correction is additive and compatibility-safe. New particular passports use 
 - **Authorization**: existing Feature 002 catalog/evaluator, extended with current relationship and age facts.
 - **Sensitive data**: application-layer encryption plus keyed fingerprints for normalized documents; no sensitive values in logs, traces or sports presentation.
 - **Time policy**: injected backend clock, calendar date in `America/Bogota`, majority threshold 18, 29 February anniversary on 1 March in non-leap years.
-- **Visual authority**: `docs/design/passport-*.png`; no production use of representative names, values or portrait.
+- **Visual authority**: `external:docs/design/passport-*.png`; no production use of representative names, values or portrait.
 - **Scope**: lifecycle, authorized histories, basic profile, responsive shell and unavailable future tabs. No public profile, payments, transfers, media, FEM, matches, calculated statistics or minor login.
 
 ## Constitution Check

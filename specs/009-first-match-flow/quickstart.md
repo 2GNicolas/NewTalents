@@ -42,7 +42,7 @@ This is a Phase 1 validation guide, not evidence that Feature 009 is implemented
 
 ## Cross-platform visual checks
 
-- Desktop: `docs/design/feature-009/first-match-invitation-desktop.png`, `first-match-scheduling-desktop.png`, `first-match-waiting-desktop.png` in the same directory.
+- Desktop: `external:docs/design/feature-009/first-match-invitation-desktop.png`, `first-match-scheduling-desktop.png`, `first-match-waiting-desktop.png` in the same directory.
 - Mobile: corresponding `*-mobile.png` files in that directory.
 - Confirm full-screen composition with no passport menu, desktop two-column vs mobile stacked form, persistent waiting details, and the separately approved secondary actions below details on both variants. Check keyboard, screen reader, safe area, errors/loading/retry and no clipped controls.
 - For SC-001, time authorized web/mobile participants through invitation and successful scheduling; at least 90% should finish within three minutes without using the passport menu.

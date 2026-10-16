@@ -32,5 +32,5 @@
 ## Notes
 
 - Validation pass for confirmed flows: invitation, reservation, correction, waiting and Administrator continuation have independently testable scenarios. A waiting match counts once as reserved; valid Analyst load changes that same unit to used without restoring availability, while pre-load cancellation releases it once. Scheduling and later allowance revisions test reserved plus used units, reject excess and preserve existing matches.
-- The approved addition places secondary rescheduling/cancellation actions below waiting-screen match details on desktop and mobile without altering the six references in `docs/design/feature-009/`. Feature 008 still declares product approval pending.
+- The approved addition places secondary rescheduling/cancellation actions below waiting-screen match details on desktop and mobile without altering the six references in `external:docs/design/feature-009/`. Feature 008 still declares product approval pending.
 - No plan, tasks or implementation were produced by this invocation.

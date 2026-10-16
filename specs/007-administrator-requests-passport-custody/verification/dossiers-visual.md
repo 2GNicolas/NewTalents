@@ -6,10 +6,10 @@ Date: 2026-10-01
 
 Only the following approved references were used:
 
-- `docs/design/admin-custody/dossiers-list-desktop.png`
-- `docs/design/admin-custody/dossiers-list-mobile.png`
-- `docs/design/admin-custody/dossier-detail-desktop.png`
-- `docs/design/admin-custody/dossier-detail-mobile.png`
+- `external:docs/design/admin-custody/dossiers-list-desktop.png`
+- `external:docs/design/admin-custody/dossiers-list-mobile.png`
+- `external:docs/design/admin-custody/dossier-detail-desktop.png`
+- `external:docs/design/admin-custody/dossier-detail-mobile.png`
 
 Ignored runtime captures are stored under `.runtime/feature-007-visual/dossiers/` as `desktop-list.png`, `mobile-list.png`, `desktop-detail.png`, and `mobile-detail.png`. Git ignore was verified for the capture directory.
 

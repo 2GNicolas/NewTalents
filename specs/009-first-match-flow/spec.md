@@ -146,9 +146,9 @@ Estas seis imágenes son la autoridad visual para la invitación, el formulario 
 
 | Pantalla | Escritorio | Móvil |
 |---|---|---|
-| Invitación | `docs/design/feature-009/first-match-invitation-desktop.png` | `docs/design/feature-009/first-match-invitation-mobile.png` |
-| Formulario de programación | `docs/design/feature-009/first-match-scheduling-desktop.png` | `docs/design/feature-009/first-match-scheduling-mobile.png` |
-| Espera del primer partido | `docs/design/feature-009/first-match-waiting-desktop.png` | `docs/design/feature-009/first-match-waiting-mobile.png` |
+| Invitación | `external:docs/design/feature-009/first-match-invitation-desktop.png` | `external:docs/design/feature-009/first-match-invitation-mobile.png` |
+| Formulario de programación | `external:docs/design/feature-009/first-match-scheduling-desktop.png` | `external:docs/design/feature-009/first-match-scheduling-mobile.png` |
+| Espera del primer partido | `external:docs/design/feature-009/first-match-waiting-desktop.png` | `external:docs/design/feature-009/first-match-waiting-mobile.png` |
 
 Las cifras de cupos, fechas, nombres, datos del partido y menciones de un «Analista asignado» son contenido ilustrativo de las imágenes: deben reflejar el estado real. En particular, la falta de Analista no impide programar, y no debe afirmarse que un Analista asignado verá el partido si aún no existe custodia vigente. La secuencia ilustrada de trabajo del Analista, FEM y disponibilidad posterior no amplía el alcance de esta característica.
 
@@ -160,5 +160,5 @@ Las referencias de espera no muestran controles para reprogramar ni cancelar un 
 - El cupo se determina por la fecha del partido y la revisión de Feature 008 efectiva en esa fecha, incluidos sus aniversarios de Colombia y cambios de periodicidad. La unidad reservada o usada pertenece al partido, no al Analista ni a la academia; su paso a usada no indica publicación ni agrega trabajo deportivo a esta característica.
 - La invitación se restaura solo si el primer partido fue cancelado antes de la carga y no queda un primer partido programado. Una vez cargado, la gestión posterior queda fuera de este alcance.
 - La aprobación de Feature 006 que crea un pasaporte activo y la activación explícita de Feature 005 conservan sus decisiones de negocio; aquí se agrega la continuación directa a la asignación existente de Feature 007.
-- Las seis imágenes enumeradas en «Referencias visuales aprobadas» son las referencias de este flujo. Las vistas `docs/design/passport-web-matches.png` y `docs/design/passport-mobile-matches.png` representan partidos analizados; no son autoridad visual para el primer partido.
+- Las seis imágenes enumeradas en «Referencias visuales aprobadas» son las referencias de este flujo. Las vistas `external:docs/design/passport-web-matches.png` y `external:docs/design/passport-mobile-matches.png` representan partidos analizados; no son autoridad visual para el primer partido.
 - La especificación de Feature 008 sigue marcada como borrador pendiente de aprobación formal. El propietario aprobó usar sus contratos actuales como base de este plan; esa autorización no modifica el estado formal de Feature 008 ni sus reglas de períodos.

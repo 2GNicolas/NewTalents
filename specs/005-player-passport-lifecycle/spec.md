@@ -21,7 +21,7 @@ La dirección de producto adjunta a esta sesión corrige la suposición de Tutor
 ## Dirección visual y autoridad de diseño
 
 - Los referentes visuales aprobados del pasaporte de jugador gobiernan la jerarquía de información, la composición, la identidad persistente del jugador, el comportamiento responsive en móvil y web, la dirección visual liquid-glass, la estructura de navegación y la organización de etiquetas y métricas mostradas.
-- Los referentes aprobados incluyen las vistas móvil y web de **Resumen**, **Estadísticas**, **Partidos** y **Videos** en `docs/design/passport-*.png`.
+- Los referentes aprobados incluyen las vistas móvil y web de **Resumen**, **Estadísticas**, **Partidos** y **Videos** en `external:docs/design/passport-*.png`.
 - La dirección visual aprobada usa fondos verde esmeralda profundo y negro, superficies oscuras translúcidas tipo liquid-glass, difusión sutil de fondo, bordes verdes luminosos finos, acentos lima, texto blanco roto y tipografía elegante no redondeada.
 - El logo de New Talents permanece separado de la fotografía del jugador.
 - El área de fotografía del jugador se conserva en móvil y web con un marcador local neutral, como una silueta o iniciales, sin usar el retrato de referencia como contenido de producción.

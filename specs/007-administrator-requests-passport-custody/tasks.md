@@ -85,7 +85,7 @@ description: "Implementation tasks for Feature 007 Administrator requests, dossi
 ### Responsive component block
 
 - [X] T017 [US1] Add accessible component tests for minimum cards, group headings/counts, next-action names, complete-list entry, filters, keyboard order, focus restoration, touch targets, non-color statuses, and reduced motion in `apps/frontend/src/administrator/requests/admin-requests-workspace.spec.tsx` and `apps/frontend/src/administrator/shell/administrator-shell.spec.tsx`
-- [X] T018 [US1] Implement the shared desktop sidebar/mobile bottom navigation and requests workspace using only `docs/design/admin-custody/registration-requests-desktop.png`, `registration-requests-mobile.png`, and approved shell references in `apps/frontend/src/administrator/shell/administrator-shell.tsx`, `apps/frontend/src/administrator/requests/admin-requests-workspace.tsx`, `apps/frontend/app/(admin)/admin/_layout.tsx`, and `apps/frontend/app/(admin)/admin/registration/index.tsx`
+- [X] T018 [US1] Implement the shared desktop sidebar/mobile bottom navigation and requests workspace using only `external:docs/design/admin-custody/registration-requests-desktop.png`, `registration-requests-mobile.png`, and approved shell references in `apps/frontend/src/administrator/shell/administrator-shell.tsx`, `apps/frontend/src/administrator/requests/admin-requests-workspace.tsx`, `apps/frontend/app/(admin)/admin/_layout.tsx`, and `apps/frontend/app/(admin)/admin/registration/index.tsx`
 
 ### Compatibility and visual gate
 
@@ -288,7 +288,7 @@ description: "Implementation tasks for Feature 007 Administrator requests, dossi
 - [X] T076 Run final static/runtime privacy canary checks across custody/dossier/request responses, conflicts, logs, events, frontend state, routes, and completed-evidence retrieval attempts; record zero unauthorized protected values in `specs/007-administrator-requests-passport-custody/verification/privacy.md`
 - [X] T077 Run the focused backend unit/contract suites, sequential PostgreSQL Feature 007 integration suites, frontend Administrator/Analyst Jest suites, and targeted typechecks; record commands/results without rerunning unrelated broad suites in `specs/007-administrator-requests-passport-custody/verification/backend-frontend.md`
 - [X] T078 Execute all 13 synthetic journeys in `specs/007-administrator-requests-passport-custody/quickstart.md`, including Feature 006 regression, exact-once concurrency, immediate Analyst revocation, and read-only dossiers; record results in `specs/007-administrator-requests-passport-custody/verification/quickstart.md`
-- [X] T079 Complete one-to-one browser comparison and accessibility verification for all 12 references under `docs/design/admin-custody/`, including desktop/mobile, keyboard, reader, focus, touch, non-color, reduced-motion, and no horizontal-scroll checks; keep screenshot binaries in ignored `.runtime/feature-007-visual/` and record results in `specs/007-administrator-requests-passport-custody/verification/visual-accessibility.md`
+- [X] T079 Complete one-to-one browser comparison and accessibility verification for all 12 references under `external:docs/design/admin-custody/`, including desktop/mobile, keyboard, reader, focus, touch, non-color, reduced-motion, and no horizontal-scroll checks; keep screenshot binaries in ignored `.runtime/feature-007-visual/` and record results in `specs/007-administrator-requests-passport-custody/verification/visual-accessibility.md`
 - [X] T080 Verify final artifact/implementation consistency and exclusions—no Feature 006 rule changes, dossier editing/confirmation, evidence recovery, duplicate passport creation, sports data, FEM execution, automatic/bulk custody, JWT-role authorization, or committed runtime screenshots—and record the completion gate in `specs/007-administrator-requests-passport-custody/verification/final-scope.md`
 
 ---
@@ -429,7 +429,7 @@ Stream C: T057–T063 — US6 detail and history
 | Passport custody workspace desktop/mobile | T030–T036, T079 |
 | Administrator passport detail desktop/mobile | T061–T063, T079 |
 
-**Coverage**: 12 of 12 references under `docs/design/admin-custody/`; zero Feature 006 visual references.
+**Coverage**: 12 of 12 references under `external:docs/design/admin-custody/`; zero Feature 006 visual references.
 
 ---
 
@@ -461,5 +461,5 @@ Stream C: T057–T063 — US6 detail and history
 - Expedientes is confirmed-record consultation only; do not implement edit, confirm, approve, retry deletion, or evidence retrieval there.
 - Custody operates on the existing passport and never creates another passport, role, membership, responsibility, sports data, or FEM result.
 - Role labels and frontend controls never authorize; re-evaluate backend facts at execution/read time.
-- Use only `docs/design/admin-custody/` for visual comparison and keep runtime screenshots out of Git.
+- Use only `external:docs/design/admin-custody/` for visual comparison and keep runtime screenshots out of Git.
 - Use synthetic canaries only; never add real personal data, credentials, document bytes, object keys, or deleted evidence to fixtures or verification artifacts.

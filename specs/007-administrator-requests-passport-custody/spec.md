@@ -175,7 +175,7 @@ Como Administrador autorizado, quiero abrir Expedientes como una sección indepe
 #### Alcance y continuidad de solicitudes
 
 - **FR-001**: El sistema MUST conservar sin cambios la creación, envío, revisión, corrección, rechazo, expediente manual, eliminación de evidencias, aprobación y creación de pasaporte existentes.
-- **FR-002**: El sistema MUST presentar el espacio administrativo de solicitudes conforme a la autoridad visual exclusiva de `docs/design/admin-custody/`, sin usar referencias de Feature 006.
+- **FR-002**: El sistema MUST presentar el espacio administrativo de solicitudes conforme a la autoridad visual exclusiva de `external:docs/design/admin-custody/`, sin usar referencias de Feature 006.
 - **FR-003**: El espacio de solicitudes MUST incluir los grupos Nuevas, Continuar revisión, Requieren corrección, Listas para decisión y Esperando verificación de eliminación de evidencias.
 - **FR-004**: Cada tarjeta operativa de solicitud MUST mostrar solo referencia enmascarada, nombre visible del solicitante o academia, tipo, una fecha o contexto relevante y una acción siguiente clara.
 - **FR-005**: El sistema MUST mantener una vista completa de solicitudes con búsqueda y filtros.
@@ -301,7 +301,7 @@ Como Administrador autorizado, quiero abrir Expedientes como una sección indepe
 - La elegibilidad de los Analistas y su acceso autenticado ya pueden determinarse mediante hechos autoritativos del sistema; esta funcionalidad solo añade la custodia como condición de acceso al pasaporte asignado.
 - Los nombres visibles usados en tarjetas y búsquedas ya son proyecciones permitidas; documentos civiles y datos de contacto no se necesitan para operar la custodia.
 - Los motivos de cambio y retiro son textos operativos breves, obligatorios y sujetos a validación para evitar datos personales innecesarios; la asignación inicial no solicita ni persiste motivo.
-- Las referencias bajo `docs/design/admin-custody/` son la única autoridad visual de Feature 007; las referencias de Feature 006 no se consultan ni gobiernan este trabajo.
+- Las referencias bajo `external:docs/design/admin-custody/` son la única autoridad visual de Feature 007; las referencias de Feature 006 no se consultan ni gobiernan este trabajo.
 - Inicio puede recibir el shell y navegación administrativa aprobados. Expedientes añade únicamente consulta independiente de registros existentes; sus reglas de creación, confirmación y eliminación no cambian.
 
 ## Dependencies

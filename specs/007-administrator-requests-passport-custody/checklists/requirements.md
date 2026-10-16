@@ -34,5 +34,5 @@
 - Validation completed on 2026-09-30 and revalidated after the targeted Expedientes correction.
 - The thirteen required journeys are covered by User Stories 1–8 and SC-016.
 - Feature 006 is treated as an unchanged dependency and remains explicitly out of scope.
-- Visual authority is limited to `docs/design/admin-custody/`.
+- Visual authority is limited to `external:docs/design/admin-custody/`.
 - The independent Expedientes consultation is covered by acceptance scenarios 8.1–8.9, FR-045–FR-054, and SC-003/SC-017–SC-019 without adding editing or approval behavior.

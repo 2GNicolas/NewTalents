@@ -4,7 +4,7 @@ Date: 2026-10-01
 
 ## Authority and captures
 
-- Compared only with `docs/design/admin-custody/administrator-passport-detail-desktop.png` and `administrator-passport-detail-mobile.png`.
+- Compared only with `external:docs/design/admin-custody/administrator-passport-detail-desktop.png` and `administrator-passport-detail-mobile.png`.
 - Runtime captures are ignored under `.runtime/feature-007-visual/passport-detail/`: `desktop.png`, `mobile.png`, and source/implementation comparison composites.
 - Desktop checked at 1440 × 1024; mobile checked at 390 × 844.
 

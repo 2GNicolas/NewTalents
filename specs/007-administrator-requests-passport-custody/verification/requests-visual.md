@@ -2,7 +2,7 @@
 
 **Fecha**: 2026-09-30
 **Alcance**: T020 / US1
-**Autoridad visual exclusiva**: `docs/design/admin-custody/registration-requests-desktop.png`, `registration-requests-mobile.png` y el shell compartido de `administrator-home-desktop.png` / `administrator-home-mobile.png`.
+**Autoridad visual exclusiva**: `external:docs/design/admin-custody/registration-requests-desktop.png`, `registration-requests-mobile.png` y el shell compartido de `administrator-home-desktop.png` / `administrator-home-mobile.png`.
 
 ## Capturas
 

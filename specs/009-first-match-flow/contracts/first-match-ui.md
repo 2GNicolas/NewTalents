@@ -4,9 +4,9 @@ The six PNGs below govern visual hierarchy and full-screen composition; example 
 
 | State | Desktop authority | Mobile authority | Required behavior |
 |---|---|---|---|
-| Invitation | `docs/design/feature-009/first-match-invitation-desktop.png` | `docs/design/feature-009/first-match-invitation-mobile.png` | Full-screen passport-active message, primary `Agendar primer partido`, current allowance availability if configured. No passport menu. |
-| Form | `docs/design/feature-009/first-match-scheduling-desktop.png` | `docs/design/feature-009/first-match-scheduling-mobile.png` | Full-screen date/time/opponent/competition/venue inputs, allowed player context, confirmation summary and live match-date allowance preview. Form `Cancelar` discards an unconfirmed edit, not a booked match. |
-| Waiting | `docs/design/feature-009/first-match-waiting-desktop.png` | `docs/design/feature-009/first-match-waiting-mobile.png` | Full-screen persisted match details and pending status. Add owner-approved secondary `Reagendar` and `Cancelar partido` immediately below details on both variants; these additions are not pictured in the PNGs. |
+| Invitation | `external:docs/design/feature-009/first-match-invitation-desktop.png` | `external:docs/design/feature-009/first-match-invitation-mobile.png` | Full-screen passport-active message, primary `Agendar primer partido`, current allowance availability if configured. No passport menu. |
+| Form | `external:docs/design/feature-009/first-match-scheduling-desktop.png` | `external:docs/design/feature-009/first-match-scheduling-mobile.png` | Full-screen date/time/opponent/competition/venue inputs, allowed player context, confirmation summary and live match-date allowance preview. Form `Cancelar` discards an unconfirmed edit, not a booked match. |
+| Waiting | `external:docs/design/feature-009/first-match-waiting-desktop.png` | `external:docs/design/feature-009/first-match-waiting-mobile.png` | Full-screen persisted match details and pending status. Add owner-approved secondary `Reagendar` and `Cancelar partido` immediately below details on both variants; these additions are not pictured in the PNGs. |
 
 ## State and navigation
 

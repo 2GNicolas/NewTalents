@@ -1,5 +1,7 @@
 # QA visual — Feature 005, corrección de Fase 6
 
+Las referencias marcadas `external:docs/design/...` se conservan fuera del repositorio; su ruta relativa y SHA-256 se registran en [el inventario de imágenes externas](docs/reference-image-archive.md). Las rutas `.expo/` y `.runtime/` citadas más abajo son evidencia local histórica, no recursos de producción.
+
 Fecha: 2026-09-16. Rama: `feature/005-player-passport-lifecycle`.
 
 ## Resultado y alcance
@@ -27,14 +29,14 @@ Las fuentes ilustran datos deportivos y un retrato que NO existen en el contrato
 
 | Sección | Viewport CSS / PNG | Referencia exacta | Captura runtime exacta | Diferencias corregidas | Diferencias restantes | Resultado |
 |---|---|---|---|---|---|---|
-| Web Resumen | 1487×1058 / DPR 1 | `C:/Proyectos/NewTalents/docs/design/passport-web-summary.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-web-summary.png` | Identidad proporcional; fondo; dos regiones de capacidades/rendimiento; jerarquía; menú lateral y ciclo secundario | Diferencias obligatorias anteriores; textura/halo P3 | passed |
-| Web Estadísticas | 1487×1058 / DPR 1 | `C:/Proyectos/NewTalents/docs/design/passport-web-statistics.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-web-statistics.png` | Cabecera, banda ofensiva, pares creación/aporte y tendencia/lectura; tipografía legible y densidad desktop | Sin cifras, barras, conclusión ni filtros ficticios; textura/halo P3 | passed |
-| Web Partidos | 1487×1058 / DPR 1 | `C:/Proyectos/NewTalents/docs/design/passport-web-matches.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-web-matches.png` | Tarjeta de recorrido, banda agregada, región de listado con mensaje de ausencia centrado, nota editorial | Región sin filas deportivas por contrato; textura/halo P3 | passed |
-| Web Videos | 1487×1058 / DPR 1 | `C:/Proyectos/NewTalents/docs/design/passport-web-videos.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-web-videos.png` | Destacado/momentos en dos columnas, categorías, región de completos, regreso funcional a Resumen | Sin thumbnails, URLs ni compartir ficticios; textura/halo P3 | passed |
-| Móvil Resumen | 853×1844 / DPR 1 | `C:/Proyectos/NewTalents/docs/design/passport-mobile-summary.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-mobile-summary.png` | Identidad horizontal, marcador proporcional, pestañas debajo, ambas tarjetas completas y espaciado corregido | Iniciales y estados no disponibles obligatorios; textura/halo P3 | passed |
-| Móvil Estadísticas | 853×1844 / DPR 1 | `C:/Proyectos/NewTalents/docs/design/passport-mobile-statistics.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-mobile-statistics.png` | Seis regiones completas, listas compactas, etiquetas sin colisión; tres columnas en banda ofensiva a anchos reales estrechos | Texto de ausencia más largo que cifras del referente; sin controles futuros; textura/halo P3 | passed |
-| Móvil Partidos | 853×1844 / DPR 1 | `C:/Proyectos/NewTalents/docs/design/passport-mobile-matches.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-mobile-matches.png` | Identidad/pestañas persistentes entre rutas, banda agregada, ausencia diseñada, nota sin datos inventados | No se dibujan filas de partidos inexistentes; textura/halo P3 | passed |
-| Móvil Videos | 853×1844 / DPR 1 | `C:/Proyectos/NewTalents/docs/design/passport-mobile-videos.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-mobile-videos.png` | Destacado compacto horizontal, momentos apilados, completos y regreso dentro del encuadre; eliminado espacio producido por flex desktop en móvil | Sin evidencia ficticia; textura/halo P3 | passed |
+| Web Resumen | 1487×1058 / DPR 1 | `external:docs/design/passport-web-summary.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-web-summary.png` | Identidad proporcional; fondo; dos regiones de capacidades/rendimiento; jerarquía; menú lateral y ciclo secundario | Diferencias obligatorias anteriores; textura/halo P3 | passed |
+| Web Estadísticas | 1487×1058 / DPR 1 | `external:docs/design/passport-web-statistics.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-web-statistics.png` | Cabecera, banda ofensiva, pares creación/aporte y tendencia/lectura; tipografía legible y densidad desktop | Sin cifras, barras, conclusión ni filtros ficticios; textura/halo P3 | passed |
+| Web Partidos | 1487×1058 / DPR 1 | `external:docs/design/passport-web-matches.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-web-matches.png` | Tarjeta de recorrido, banda agregada, región de listado con mensaje de ausencia centrado, nota editorial | Región sin filas deportivas por contrato; textura/halo P3 | passed |
+| Web Videos | 1487×1058 / DPR 1 | `external:docs/design/passport-web-videos.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-web-videos.png` | Destacado/momentos en dos columnas, categorías, región de completos, regreso funcional a Resumen | Sin thumbnails, URLs ni compartir ficticios; textura/halo P3 | passed |
+| Móvil Resumen | 853×1844 / DPR 1 | `external:docs/design/passport-mobile-summary.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-mobile-summary.png` | Identidad horizontal, marcador proporcional, pestañas debajo, ambas tarjetas completas y espaciado corregido | Iniciales y estados no disponibles obligatorios; textura/halo P3 | passed |
+| Móvil Estadísticas | 853×1844 / DPR 1 | `external:docs/design/passport-mobile-statistics.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-mobile-statistics.png` | Seis regiones completas, listas compactas, etiquetas sin colisión; tres columnas en banda ofensiva a anchos reales estrechos | Texto de ausencia más largo que cifras del referente; sin controles futuros; textura/halo P3 | passed |
+| Móvil Partidos | 853×1844 / DPR 1 | `external:docs/design/passport-mobile-matches.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-mobile-matches.png` | Identidad/pestañas persistentes entre rutas, banda agregada, ausencia diseñada, nota sin datos inventados | No se dibujan filas de partidos inexistentes; textura/halo P3 | passed |
+| Móvil Videos | 853×1844 / DPR 1 | `external:docs/design/passport-mobile-videos.png` | `C:/Proyectos/NewTalents/.expo/visual-qa/final/passport-mobile-videos.png` | Destacado compacto horizontal, momentos apilados, completos y regreso dentro del encuadre; eliminado espacio producido por flex desktop en móvil | Sin evidencia ficticia; textura/halo P3 | passed |
 
 Evidencia conjunta abierta: `C:/Proyectos/NewTalents/.expo/visual-qa/final/compare-{web|mobile}-{summary|statistics|matches|videos}.jpg` (ocho archivos). Detalle de identidad/navegación abierto: `C:/Proyectos/NewTalents/.expo/visual-qa/final/focus-web-identity.jpg` y `C:/Proyectos/NewTalents/.expo/visual-qa/final/focus-mobile-identity.jpg`. Además se inspeccionó `responsive-390.png` y `keyboard-focus.png`; las capturas se conservan en directorio ignorado, no son assets de producción.
 
@@ -97,7 +99,7 @@ final result: passed
 
 ## Evidence
 
-- Sources: `docs/design/admin-custody/administrator-home-desktop.png` and `administrator-home-mobile.png`.
+- Sources: `external:docs/design/admin-custody/administrator-home-desktop.png` and `administrator-home-mobile.png`.
 - Runtime: `.runtime/feature-007-visual/home/desktop.png` at 1440x1024 and `.runtime/feature-007-visual/home/mobile.png` at 390x844.
 - Route: direct `/admin` inside the existing Administrator shell.
 
@@ -245,8 +247,8 @@ final result: passed
 
 ## Evidence
 
-- Source: `docs/design/admin-custody/administrator-passport-detail-desktop.png`
-- Source: `docs/design/admin-custody/administrator-passport-detail-mobile.png`
+- Source: `external:docs/design/admin-custody/administrator-passport-detail-desktop.png`
+- Source: `external:docs/design/admin-custody/administrator-passport-detail-mobile.png`
 - Runtime: `.runtime/feature-007-visual/passport-detail/desktop.png`
 - Runtime: `.runtime/feature-007-visual/passport-detail/mobile.png`
 - Combined comparisons: `.runtime/feature-007-visual/passport-detail/*-comparison.png`
@@ -271,7 +273,7 @@ PASS with documented contract-driven deviations. The reference contains richer p
 
 ## Evidence
 
-- Sources: `docs/design/admin-custody/dossiers-list-desktop.png`, `dossiers-list-mobile.png`, `dossier-detail-desktop.png`, and `dossier-detail-mobile.png`
+- Sources: `external:docs/design/admin-custody/dossiers-list-desktop.png`, `dossiers-list-mobile.png`, `dossier-detail-desktop.png`, and `dossier-detail-mobile.png`
 - Runtime: `.runtime/feature-007-visual/dossiers/{desktop-list,mobile-list,desktop-detail,mobile-detail}.png`
 - Verification record: `specs/007-administrator-requests-passport-custody/verification/dossiers-visual.md`
 

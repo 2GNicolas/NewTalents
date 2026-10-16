@@ -131,7 +131,7 @@ Todos siguen siendo expedientes confirmados; el filtro de estado describe su res
 
 ## R12. Autoridad visual y conflicto de alcance
 
-**Decision**: Usar las 12 imágenes de `docs/design/admin-custody/` para shell, jerarquía, color, composición y comportamiento responsivo. No usar imágenes de Feature 006.
+**Decision**: Usar las 12 imágenes de `external:docs/design/admin-custody/` para shell, jerarquía, color, composición y comportamiento responsivo. No usar imágenes de Feature 006.
 
 Las referencias de Expedientes muestran estados y acciones como “Por confirmar” y “Confirmar”. La especificación corregida limita esta sección a expedientes confirmados y prohíbe nuevas confirmaciones. Por tanto, esos elementos son guía visual de tarjetas/estados, no alcance funcional. Lo mismo aplica a tarjetas de Inicio que invitan a confirmar expedientes.
 
