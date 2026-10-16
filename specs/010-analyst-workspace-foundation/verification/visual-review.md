@@ -1,0 +1,53 @@
+# Revisión visual y accesible — Feature 010
+
+Fecha: 2026-10-15. Chrome real autenticado contra API Nest y Expo Web locales, con cuenta y tres pasaportes sintéticos en una base PostgreSQL dedicada; sin parámetro `preview` ni respuestas inventadas. Capturas finales normalizadas a 1440 × 900 (escritorio) y 390 × 844 (móvil). El control de viewport de Chrome reportó una escala distinta entre la dimensión solicitada y `innerWidth`/`innerHeight`; se retiró únicamente el relleno negro añadido por la captura y se normalizó la imagen móvil. No se alteraron los PNG aprobados.
+
+| Vista | Escritorio | Móvil | Comparación con la referencia aprobada |
+|---|---|---|---|
+| Inicio | [Captura](screenshots/01-inicio-desktop.jpg) | [Captura](screenshots/04-inicio-mobile.jpg) | Conserva saludo, jerarquía pendientes/próximos/realizados, sidebar/barra inferior, estado no disponible y «Ver calendario». |
+| Pasaportes | [Captura](screenshots/02-pasaportes-desktop.jpg) | [Captura](screenshots/05-pasaportes-mobile.jpg) | Tarjetas de custodia, nombre autorizado, referencia complementaria, partido próximo solo si existe y apertura de detalle. |
+| Partidos | [Captura](screenshots/03-partidos-desktop.jpg) | [Captura](screenshots/06-partidos-mobile.jpg) | Agenda agrupada por fecha, rival/competencia/sede/estado y «Ver partido» de solo lectura. |
+
+La comparación se hizo respectivamente con `New Talents analyst workload overview-1.png`, `Mobile analyst dashboard with pending analyses-2.png`, `Analyst passport custody dashboard.png`, `Active passport custody dashboard.png`, `Emerald Match Agenda for Analysts.png` y `New Talents match agenda.png` en `docs/design/analist/`. Los nombres, conteos, referencias y ejemplos de esos diseños no se usaron como datos reales.
+
+## Recorridos y estados observados
+
+- Inicio mostró un `WAITING` anterior a su hora en Pendientes, otro futuro en Próximos y nunca el `LOADED` como análisis realizado. «Ver calendario» abrió `/analyst/matches`. «Continuar», «Borrador guardado» y «Ver historial» no se presentaron como acciones funcionales.
+- Pasaportes mostró tres nombres propios `ACTIVE` bajo la custodia sintética, sin correo en las tarjetas. El detalle de Mateo mostró únicamente su correo de trabajo autorizado; «Sin próximo partido programado» no niega el partido pendiente. Partidos mostró tres partidos confirmados, incluido uno `LOADED` rotulado «Carga confirmada», sin captura ni programación.
+- La carga se observó como `Cargando Inicio/Pasaportes/Partidos…` al navegar. Con un Analista sin custodias se observaron los vacíos de [Inicio](screenshots/07-inicio-empty-mobile.jpg), [Pasaportes](screenshots/08-pasaportes-empty-mobile.jpg) y [Partidos](screenshots/09-partidos-empty-mobile.jpg), sin tarjetas de ejemplo; se repitió la comprobación del árbol de las tres vistas en escritorio. Los enlaces directos inexistentes de [pasaporte](screenshots/10-passport-restricted-mobile.jpg) y [partido](screenshots/11-match-restricted-mobile.jpg) devolvieron «Acceso restringido» sin nombre/contacto; el partido se revisó también en escritorio.
+- Se detuvo **solo** la API de esta revisión, se observó el [error recuperable de Inicio](screenshots/12-inicio-error-mobile.jpg) y el mismo mensaje con «Reintentar» en Pasaportes y Partidos; Inicio y Partidos se comprobaron asimismo en escritorio. Tras reiniciar la API, «Reintentar» recuperó la agenda real tanto en móvil como en escritorio. La aplicación queda de nuevo operativa.
+- En el árbol web se verificaron `h1` de vista, `h2` de secciones/fechas/nombre de detalle, `h3` para contacto y nombres de botones. En móvil, Tab desde «Cerrar sesión» enfocó «Ver partido de Samuel de prueba» con contorno `rgb(165, 255, 0) auto 1px`; Enter abrió el detalle correcto. En escritorio, Tab desde «Inicio» enfocó «Pasaportes» con el mismo contorno. La navegación activa expone `aria-current=page`. En escritorio y móvil no hubo desbordamiento horizontal visible; la última tarjeta se alcanza desplazando el contenido sin ocultarla permanentemente tras la barra inferior.
+
+## Correcciones y diferencias restantes
+
+Se corrigieron la etiqueta de ausencia de partido futuro, la falta de cuenta/cierre de sesión en el shell, la semántica de encabezados y el foco visible. El fondo usa el recurso esmeralda ya existente en la app y no contiene datos ilustrativos. Aún **no** reproduce la fotografía de estadio ni la iluminación exacta del PNG de Inicio; el avatar es de iniciales, no una foto sin fuente autorizada; Pasaportes y Partidos muestran «Analista» genérico porque solo el contrato de Inicio aporta `analystLabel`; y la agenda móvil agrupa por fecha pero no reproduce la línea vertical decorativa del PNG. Son diferencias visuales conocidas, no datos o acciones añadidos. La equivalencia visual exacta de SC-006 no se acredita.
+
+La primera pasada de teclado/árbol fue enfocada; la matriz completa de estados web se añadió abajo. No se hizo prueba nativa de voz ni auditoría con lector de pantalla, fuera del criterio aprobado.
+
+## Corrección de solape móvil en Inicio (2026-10-15)
+
+En Chrome autenticado sobre `/analyst`, con un partido `WAITING` próximo real de la base sintética aislada, se reprodujo el defecto a `innerWidth = 390`: la tarjeta «Análisis realizados» comenzaba 36,5 px **antes** del borde inferior de «Ver calendario». La causa era `flex: 1` en las envolturas de las dos tarjetas inferiores también en columna móvil; la altura asignada no seguía el contenido de «Próximos partidos». Se trasladaron ese flex y el margen automático del botón exclusivamente al diseño de escritorio. En móvil las tarjetas crecen con el texto envuelto y mantienen el `gap` y el relleno previstos.
+
+| Chrome autenticado | Medición después del cambio | Evidencia |
+|---|---|---|
+| 390 × 844 CSS px | Botón termina en y=398; «Realizados» comienza en y=441: **43 px libres**. Ambas secciones completas son visibles en la captura. | [Inicio móvil 390](screenshots/13-inicio-overlap-fixed-390.jpg) |
+| 320 × 700 CSS px | Botón termina en y=247; «Realizados» comienza en y=290: **43 px libres** aun con título/subtítulo envueltos. La captura muestra la unión de ambas tarjetas; la parte superior de «Próximos» queda fuera del viewport por desplazamiento normal, no por recorte del componente. | [Inicio estrecho 320](screenshots/14-inicio-overlap-fixed-320.jpg) |
+| 1440 × 900 CSS px | «Próximos» y «Realizados» siguen en dos columnas con el mismo borde superior (y=488), sin alterar la composición de escritorio. | Medición DOM en Chrome. |
+
+La prueba enfocada primero falló en 390/320 px con `flex: 1` móvil y después pasó: 2 suites frontend, 9 pruebas. El typecheck frontend pasó. No se modificaron las referencias PNG, los datos ni las acciones de análisis; las diferencias de fotografía/iluminación y decoración ya indicadas arriba permanecen.
+
+## Cierre web de FR-013 y SC-005 (2026-10-15)
+
+Se repitió el recorrido en Chrome **autenticado** con `innerWidth × innerHeight` de **1440 × 900** y **390 × 844**. La cuenta con tres pasaportes `ACTIVE` bajo custodia aportó las vistas con datos; otra cuenta sintética sin custodias aportó el vacío legítimo. Para el estado restringido se revocó temporalmente solo el rol `ANALYST` de la primera cuenta en la base aislada y se restauró después; para el error se detuvo solo la API aislada del puerto 3100 y se reinició. Una lectura PostgreSQL sintética retenida durante unos segundos permitió observar «Cargando Inicio…» en ambos tamaños sin inventar una respuesta HTTP. La API y el rol quedaron restaurados; no se tocó la base ordinaria.
+
+| Vista | Árbol web y orden de teclado comprobados en escritorio y móvil | Carga / vacío / error / restricción |
+|---|---|---|
+| Inicio | Un `h1` personalizado; `h2` para Pendientes, Próximos y Realizados; botones «Abrir partido» y «Ver calendario». Tab: navegación lateral → cierre de sesión → partidos → calendario en escritorio; cierre de sesión → partidos → calendario → barra inferior en móvil. Enter en «Ver calendario» abrió `/analyst/matches`. | «Cargando Inicio…» como `alert`, sin tarjetas; dos mensajes de ausencia en las secciones disponibles; Realizados sigue visible como **no disponible** y sin «Continuar»/«Ver historial»; error con `alert` y «Reintentar»; revocación con `alert` «Acceso restringido» y sin nombres ni partidos. |
+| Pasaportes | `h1` de cartera; nombres de botones «Abrir pasaporte de …» distinguibles. Tab recorrió las tres tarjetas en orden tras shell; Enter abrió detalle con `h2` de jugador y `h3` de «Contacto de trabajo», y el botón de retorno funcionó. | «Cargando pasaportes…» como `alert`, sin tarjetas previas; «No tienes pasaportes bajo custodia actual» en la cuenta vacía; error con `alert` y «Reintentar»; revocación con `alert` y sin nombre/contacto retenido. |
+| Partidos | `h1` de agenda, `h2` de fechas; botones «Ver partido de …» para tres filas. Tab recorrió las filas; Enter abrió detalle de solo lectura con `h2` de jugador y retorno a la agenda. | «Cargando partidos…» como `alert`, sin agenda previa; «No hay partidos confirmados bajo tu custodia» en la cuenta vacía; error con `alert` y «Reintentar»; revocación con `alert` y sin partidos retenidos. |
+
+En las secuencias verificadas, **todos los botones enfocados** mostraron `:focus-visible` y contorno `auto 1px rgb(165, 255, 0)`; los botones de contenido se desplazaron hasta quedar por encima de la barra inferior móvil. La navegación activa conserva `aria-current="page"`. En error, Tab alcanzó «Reintentar» en las tres vistas; tras restablecer la API, su activación volvió a consultar y recuperó la agenda real. [Captura del foco móvil en «Ver calendario»](screenshots/15-inicio-keyboard-focus-mobile.jpg), junto con las capturas de vacío, restricción y error 07–12 anteriores. La [corrección del solape a 390/320 px](#corrección-de-solape-móvil-en-inicio-2026-10-15) permaneció verificada.
+
+El propietario aceptó para esta revisión las diferencias visuales ya enumeradas (fotografía/iluminación, avatar de iniciales, rótulo genérico fuera de Inicio y línea decorativa de agenda). Esta aceptación no modifica los seis PNG ni añade datos o acciones. La pasada de accesibilidad valida teclado, foco y árbol **web** en las combinaciones descritas; no afirma conformidad WCAG general ni prueba nativa de lector de pantalla.
+
+Verificación automatizada posterior: `npm exec --workspace apps/frontend jest -- --runInBand src/analyst-workspace` **6 suites / 27 pruebas pasaron**; `npm run typecheck --workspace apps/frontend` **pasó**; `git diff --check` **sin errores**.

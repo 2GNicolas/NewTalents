@@ -1,15 +1,17 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import { useAuthentication } from '../../src/authentication/authentication-provider';
+import { authenticatedEntry } from '../../src/authentication/authenticated-route-policy';
 
-import { AUTHENTICATED_PRODUCT_ENTRY } from '../../src/authentication/authenticated-destination';
 import { AuthLoading } from '../../src/design/components/auth-primitives';
 
 export default function AuthenticatedRouteShell() {
   const router = useRouter();
+  const authentication = useAuthentication();
 
   useEffect(() => {
-    router.replace(AUTHENTICATED_PRODUCT_ENTRY as never);
-  }, [router]);
+    router.replace(authenticatedEntry(authentication.sessionAccess) as never);
+  }, [authentication.sessionAccess, router]);
 
-  return <AuthLoading label="Abriendo pasaportes" />;
+  return <AuthLoading label="Abriendo tu espacio" />;
 }

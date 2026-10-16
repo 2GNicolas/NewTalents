@@ -12,6 +12,7 @@ import { RegistrationRequestsModule } from './registration-requests/registration
 import { PassportCustodyModule } from './passport-custody/passport-custody.module.js';
 import { PassportMatchAllowanceModule } from './passport-match-allowance/passport-match-allowance.module.js';
 import { FirstMatchModule } from './first-match/first-match.module.js';
+import { AnalystWorkspaceModule } from './analyst-workspace/analyst-workspace.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { FirstMatchModule } from './first-match/first-match.module.js';
     PassportCustodyModule,
     PassportMatchAllowanceModule,
     FirstMatchModule,
+    AnalystWorkspaceModule,
   ],
 })
 export class AppModule {}
