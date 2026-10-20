@@ -25,7 +25,8 @@ export function AnalystWorkspaceShell({ current, onNavigate, onLogout, accountLa
   const logout = onLogout ? <Pressable accessibilityRole="button" accessibilityLabel="Cerrar sesión" onPress={onLogout}
     style={styles.logout}><Text style={styles.logoutText}>Cerrar sesión</Text></Pressable> : null;
   return <ImageBackground testID="analyst-workspace-background"
-    source={require('../../assets/authentication/liquid-emerald-abstract-v1.png')} resizeMode="cover" style={styles.background}>
+    source={require('../../assets/authentication/liquid-emerald-abstract-v1.png')} resizeMode="cover"
+    imageStyle={styles.backgroundImage} style={styles.background}>
     <View pointerEvents="none" style={styles.scrim} />
     <SafeAreaView style={styles.safe}>
     <View style={[styles.frame, desktop && styles.frameDesktop]}>
@@ -54,7 +55,8 @@ export function AnalystWorkspaceShell({ current, onNavigate, onLogout, accountLa
 
 const colors = passportTheme.colors;
 const styles = StyleSheet.create({
-  background: { flex: 1, backgroundColor: '#001a13' },
+  background: { flex: 1, width: '100%', overflow: 'hidden', backgroundColor: '#001a13' },
+  backgroundImage: { width: '100%', height: '100%' },
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 18, 12, .62)' },
   safe: { flex: 1 },
   frame: { flex: 1 }, frameDesktop: { flexDirection: 'row' },

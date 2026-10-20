@@ -9,7 +9,8 @@ type Navigate = (destination: 'Inicio' | 'Pasaportes' | 'Partidos') => void;
 type ListProps = Readonly<{ data: readonly AnalystMatchDetail[]; hasMore: boolean; kind: ViewKind;
   onOpen: (id: string) => void; onRetry: () => void; onMore?: () => void; onNavigate?: Navigate; onLogout?: () => void }>;
 type DetailProps = Readonly<{ detail: AnalystMatchDetail | null; kind: ViewKind;
-  onBack: () => void; onRetry: () => void; onNavigate?: Navigate; onLogout?: () => void }>;
+  onBack: () => void; onRetry: () => void; captureAvailability?: 'AVAILABLE' | 'UNAVAILABLE' | 'CONFIRMED';
+  onCapture?: () => void; onNavigate?: Navigate; onLogout?: () => void }>;
 
 const dateLabel = (date: string) => {
   const day = new Date(`${date}T12:00:00Z`);
@@ -61,7 +62,7 @@ export function AnalystMatchListView({ data, hasMore, kind, onOpen, onRetry, onM
   </AnalystWorkspaceShell>;
 }
 
-export function AnalystMatchDetailView({ detail, kind, onBack, onRetry, onNavigate, onLogout }: DetailProps) {
+export function AnalystMatchDetailView({ detail, kind, onBack, onRetry, captureAvailability, onCapture, onNavigate, onLogout }: DetailProps) {
   return <AnalystWorkspaceShell current="Partidos" onNavigate={onNavigate} onLogout={onLogout}>
     <Pressable accessibilityRole="button" onPress={onBack} style={styles.back}><Text style={styles.actionText}>← Volver a Partidos</Text></Pressable>
     <Text accessibilityRole="header" style={styles.title}>Partido programado</Text>
@@ -71,6 +72,12 @@ export function AnalystMatchDetailView({ detail, kind, onBack, onRetry, onNaviga
       <Text style={styles.date}>{dateLabel(detail.matchDate)}  ·  {detail.matchTime}</Text>
       <Text style={styles.meta}>Rival  ·  {detail.opponent}</Text><Text style={styles.meta}>Competencia  ·  {detail.competition}</Text>
       <Text style={styles.meta}>Sede  ·  {detail.venue}</Text><Text style={styles.badge}>{stateLabel(detail.state)}</Text>
+      {detail.state === 'WAITING' && detail.sourceKind === 'FIRST_MATCH' && captureAvailability === 'AVAILABLE' && onCapture
+        ? <Pressable accessibilityRole="button" onPress={onCapture} style={styles.action}>
+          <Text style={styles.actionText}>Registrar datos del partido</Text></Pressable> : null}
+      {detail.state === 'LOADED' && detail.sourceKind === 'FIRST_MATCH' && captureAvailability === 'CONFIRMED' && onCapture
+        ? <Pressable accessibilityRole="button" onPress={onCapture} style={styles.action}>
+          <Text style={styles.actionText}>Consultar carga confirmada</Text></Pressable> : null}
       <Text style={styles.foot}>Consulta de solo lectura. La carga confirmada no acredita un análisis realizado.</Text>
     </View> : null}
   </AnalystWorkspaceShell>;

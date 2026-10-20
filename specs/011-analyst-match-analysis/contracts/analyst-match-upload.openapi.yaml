@@ -1,0 +1,298 @@
+openapi: 3.0.3
+info:
+  title: New Talents Analyst match-data upload
+  version: 0.1.0
+  description: >-
+    Authorized Feature 011 capture and final confirmation. Only FIRST_MATCH has a
+    confirmed source/transition today. This contract does not complete FEM evaluation
+    or publish the video or sporting observations. Every success and error response
+    carries Cache-Control no-store; protected inputs are never echoed in errors.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+paths:
+  /analyst/workspace/matches/{matchId}/capture:
+    get:
+      operationId: getAnalystMatchCapture
+      summary: Read current capture eligibility or a previously confirmed upload
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+      responses:
+        '200':
+          description: Authorized current context; confirmed upload only if owned and currently accessible
+          headers:
+            Cache-Control:
+              schema: { type: string, enum: [no-store] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CaptureContext' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /analyst/workspace/matches/{matchId}/capture/confirm:
+    post:
+      operationId: confirmAnalystMatchUpload
+      summary: Atomically confirm a complete upload, and load FIRST_MATCH when applicable
+      description: >-
+        Idempotency-Key is a stable UUID per intention and becomes the opaque loadId.
+        A validation failure leaves no confirmed upload and no FIRST_MATCH transition.
+        The same key and identical content may replay; a different intention or
+        stale match version conflicts. Authorization is rechecked on every request.
+      parameters:
+        - $ref: '#/components/parameters/MatchId'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmUploadInput' }
+      responses:
+        '200':
+          description: Applied or idempotently replayed confirmed upload
+          headers:
+            Cache-Control:
+              schema: { type: string, enum: [no-store] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfirmedUpload' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    CaptureContext:
+      type: object
+      additionalProperties: false
+      required: [matchId, sourceKind, passportId, availability]
+      properties:
+        matchId: { type: string, format: uuid }
+        sourceKind: { type: string, enum: [FIRST_MATCH] }
+        passportId: { type: string, format: uuid }
+        availability: { type: string, enum: [AVAILABLE, CONFIRMED, UNAVAILABLE] }
+        expectedVersion:
+          type: integer
+          minimum: 1
+          description: Present only while AVAILABLE; a hint, not authorization.
+        upload: { $ref: '#/components/schemas/ConfirmedUpload' }
+    ConfirmUploadInput:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion, participation, totalMinutesPlayed, youtubeUrl, events]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        participation: { type: string, enum: [PARTICIPATED, DID_NOT_PARTICIPATE] }
+        totalMinutesPlayed:
+          type: integer
+          minimum: 0
+          description: >-
+            Whole played minutes including added time. PARTICIPATED requires >0
+            and at least one event; DID_NOT_PARTICIPATE requires 0 and no events.
+            No fixed 90-minute cap; never derived from event timestamps.
+        youtubeUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: >-
+            HTTPS URL for a video on youtube.com or a genuine subdomain, or youtu.be,
+            with nonempty video identifier. Syntax validation does not check availability.
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/ObservedEvent' }
+    ConfirmedUpload:
+      type: object
+      additionalProperties: false
+      required: [matchId, sourceKind, participation, totalMinutesPlayed, youtubeUrl, events, confirmedAt, outcome]
+      properties:
+        matchId: { type: string, format: uuid }
+        sourceKind: { type: string, enum: [FIRST_MATCH] }
+        participation: { type: string, enum: [PARTICIPATED, DID_NOT_PARTICIPATE] }
+        totalMinutesPlayed: { type: integer, minimum: 0 }
+        youtubeUrl: { type: string, format: uri }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/ObservedEvent' }
+        confirmedAt: { type: string, format: date-time }
+        outcome: { type: string, enum: [APPLIED, IDEMPOTENT] }
+    ObservedEvent:
+      type: object
+      additionalProperties: false
+      required: [sequence, eventType, result, videoMinute, context, complexity]
+      description: >-
+        GOAL and ASSIST, and any event with result FAILURE, require empty context
+        and complexity objects; they do not traverse guided measurements. Other
+        results require the complete five-context and seven-criterion objects.
+        A failed SAVE does not require goalkeeperDetail. The server enforces this.
+      properties:
+        sequence: { type: integer, minimum: 1 }
+        eventType:
+          type: string
+          enum: [PASS, CROSS, ASSIST, RECEPTION, ORIENTED_CONTROL, DRIBBLE, SHOT, GOAL,
+            INTERCEPTION, TACKLE, CLEARANCE, SHOT_BLOCK, FOUL_RECEIVED, FOUL_COMMITTED,
+            TACTICAL_FOUL, BALL_LOSS, OFFSIDE, SAVE, GOALKEEPER_EXIT, GOALKEEPER_DISTRIBUTION,
+            GOALKEEPER_DIRECTED_DISTRIBUTION, CLOSE_DOWN]
+        variant:
+          type: string
+          enum: [NORMAL, THROUGH]
+          description: Only PASS accepts a variant; it requires one of these values.
+        result:
+          type: string
+          enum: [SUCCESS, FAILURE, POOR_CONTROL, SAVED, BLOCKED, WIDE, WOODWORK,
+            YES, NO, DANGEROUS_REBOUND, NONE]
+          description: >-
+            PASS/CROSS/ORIENTED_CONTROL/DRIBBLE/INTERCEPTION/TACKLE/CLEARANCE/
+            SHOT_BLOCK/GOALKEEPER_EXIT/GOALKEEPER_DISTRIBUTION/
+            GOALKEEPER_DIRECTED_DISTRIBUTION/CLOSE_DOWN: SUCCESS or FAILURE.
+            RECEPTION: SUCCESS, POOR_CONTROL or FAILURE. SHOT: SAVED, BLOCKED,
+            WIDE or WOODWORK. OFFSIDE: YES or NO. SAVE: SUCCESS,
+            DANGEROUS_REBOUND or FAILURE. ASSIST/GOAL/FOUL_RECEIVED/
+            FOUL_COMMITTED/TACTICAL_FOUL/BALL_LOSS: NONE. Server validates
+            the pair; no score or rating. GOAL and ASSIST use NONE as a transport
+            sentinel; their capture UI does not display a result control.
+        videoMinute:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Observed video/match-minute notation (for example 45+2), not total played minutes.
+        period:
+          type: string
+          maxLength: 24
+          description: Preserved when discernible; not inferred from the device clock.
+        addedTime:
+          type: integer
+          minimum: 0
+          description: Preserved when discernible.
+        context:
+          oneOf:
+            - $ref: '#/components/schemas/EventContext'
+            - $ref: '#/components/schemas/EmptyMeasurements'
+        complexity:
+          oneOf:
+            - $ref: '#/components/schemas/EventComplexity'
+            - $ref: '#/components/schemas/EmptyMeasurements'
+        goalkeeperDetail:
+          $ref: '#/components/schemas/GoalkeeperDetail'
+        observation:
+          type: string
+          description: >-
+             Backward-compatible private text for existing clients and confirmed
+             records. The current capture UI does not offer this field. Omission or
+             an empty string does not block saving or confirmation. If supplied,
+             it remains private and is included in the event and intent digest.
+    EmptyMeasurements:
+      type: object
+      additionalProperties: false
+      maxProperties: 0
+       description: GOAL, ASSIST or result FAILURE; not inferred NOT_OBSERVABLE or NOT_APPLICABLE values.
+    ContextObservation:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [status, value]
+          properties:
+            status: { type: string, enum: [OBSERVED] }
+            value: { type: string, minLength: 1, maxLength: 80 }
+        - type: object
+          additionalProperties: false
+          required: [status]
+          properties:
+            status: { type: string, enum: [NOT_OBSERVABLE] }
+      description: All five contexts apply; NOT_APPLICABLE is not valid here.
+    EventContext:
+      type: object
+      additionalProperties: false
+      required: [spatial, temporal, competitive, pressure, positional]
+      properties:
+        spatial: { $ref: '#/components/schemas/ContextObservation' }
+        temporal: { $ref: '#/components/schemas/ContextObservation' }
+        competitive: { $ref: '#/components/schemas/ContextObservation' }
+        pressure: { $ref: '#/components/schemas/ContextObservation' }
+        positional: { $ref: '#/components/schemas/ContextObservation' }
+    ComplexityObservation:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [status, value]
+          properties:
+            status: { type: string, enum: [OBSERVED] }
+            value:
+              type: string
+              enum: [NONE, LOW, MEDIUM, HIGH, VERY_HIGH, YES, NO]
+              description: >-
+                Graduated criteria use NONE/LOW/MEDIUM/HIGH/VERY_HIGH;
+                nonDominantLimb uses YES/NO. These are descriptive, never scores.
+        - type: object
+          additionalProperties: false
+          required: [status]
+          properties:
+            status: { type: string, enum: [NOT_OBSERVABLE, NOT_APPLICABLE] }
+    EventComplexity:
+      type: object
+      additionalProperties: false
+      required: [technicalDifficulty, distance, precision, executionSpeed, opponents,
+        nonDominantLimb, risk]
+      properties:
+        technicalDifficulty: { $ref: '#/components/schemas/ComplexityObservation' }
+        distance: { $ref: '#/components/schemas/ComplexityObservation' }
+        precision: { $ref: '#/components/schemas/ComplexityObservation' }
+        executionSpeed: { $ref: '#/components/schemas/ComplexityObservation' }
+        opponents: { $ref: '#/components/schemas/ComplexityObservation' }
+        nonDominantLimb: { $ref: '#/components/schemas/ComplexityObservation' }
+        risk: { $ref: '#/components/schemas/ComplexityObservation' }
+    GoalkeeperDetail:
+      type: object
+      additionalProperties: false
+      required: [handUsed, handChanged]
+      description: >-
+        Required for SAVE and forbidden for other event types; each field has an
+        observed value or explicit absence. No numeric complexity weight.
+      properties:
+        handUsed:
+          description: OBSERVED value DOMINANT/NON_DOMINANT/BOTH/NO_HANDS, or explicit absence.
+          allOf: [{ $ref: '#/components/schemas/GoalkeeperHandObservation' }]
+        handChanged:
+          description: OBSERVED value YES/NO, or explicit absence.
+          allOf: [{ $ref: '#/components/schemas/GoalkeeperHandObservation' }]
+    GoalkeeperHandObservation:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [status, value]
+          properties:
+            status: { type: string, enum: [OBSERVED] }
+            value: { type: string, enum: [DOMINANT, NON_DOMINANT, BOTH, NO_HANDS, YES, NO] }
+        - type: object
+          additionalProperties: false
+          required: [status]
+          properties:
+            status: { type: string, enum: [NOT_OBSERVABLE, NOT_APPLICABLE] }
+    SafeError:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code: { type: string }
+  responses:
+    InvalidRequest: { description: Malformed request, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    Unauthorized: { description: No session, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    Forbidden: { description: Current Analyst authority absent, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    NotFound: { description: Same minimal body for foreign and nonexistent match, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    Conflict: { description: Stale, canceled, loaded by another intention, or changed match, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    ValidationFailed: { description: Correctable input error without protected prior data, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }
+    Unavailable: { description: Service unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/SafeError' } } } }

@@ -284,3 +284,35 @@ PASS. The list/detail hierarchy, shared shell, responsive cards, linked-record t
 The omitted pending-confirm rows, mutation controls, and evidence panel are required contract deviations: US8 is confirmed-record consultation only and exposes privacy-minimal projections. P3 differences are limited to local font/glyph metrics, synthetic row density, and background crop.
 
 final result: passed
+
+---
+
+# Design QA — Feature 011 capture correction (2026-10-19)
+
+Authenticated Chrome comparison used the isolated synthetic `WAITING/RESERVED` match at `/analyst/matches/e9bc975a-d369-465c-bb3a-5fff26b1aba0/capture`. The capture composition now follows the established emerald glass shell, four-step progress, match identity, moment panel, circular event control, and captured-events disclosure. The wheel is a dimmed, anchored modal with 23 actual radial SVG sectors in desktop and mobile; clicking a sector surface returned to the same circular button showing the chosen event and “Cambiar”. The guided context/complexity rail retains explicit labelled taps, automatic advance, correction, and keyboard-accessible names.
+
+Evidence is outside the repository in `C:/Proyectos/NewTalents-Review-Screenshots/Feature-011/`: `capture-desktop.jpg`, `radial-wheel-desktop.jpg`, `radial-wheel-mobile.jpg`, `feature011-radial-mobile-review.jpg`. Compared together with available approved PNGs in `C:/Proyectos/NewTalents-Approved-Visual-References/Feature-011/captura/`. Focused frontend checks: 6 suites/28 tests passed; frontend typecheck and `git diff --check` passed. The isolated review services remain running; no final confirmation was made on that match.
+
+Remaining owner-review differences: the approved radial illustration uses one icon-bearing ring and curved category captions; the responsive implementation uses two rings to fit all 23 types. Two approved PNGs (`Analyst Match Event Capture-1.png`, `Analyst event review and correction-4.png`) remain unavailable from verified copies. Native virtual-keyboard/screen-reader checks are not covered by this web comparison. T038 remains open; this pass does not claim full visual acceptance.
+
+final result: blocked pending owner visual review and missing references
+
+## Iteración de la rueda y catálogos — 2026-10-19
+
+**Fuente visual:** `C:/Proyectos/NewTalents-Approved-Visual-References/Feature-011/captura/Radial event wheel overlay.png` (1487×1058) y `Filtered pass guided temporal measurement-1.png` (1487×1058). **Runtime:** `C:/Proyectos/NewTalents-Review-Screenshots/Feature-011/wheel-desktop-1487x1058-20261019.png` (viewport CSS 1487×1058, DPR 1, píxeles iguales) y `context-temporal-mobile-20261019.png` (390×844 CSS/píxeles, DPR 1). Se inspeccionaron las fuentes y capturas juntas. La rueda se comparó en el estado «Pase filtrado» seleccionado; el runtime estaba desplazado hacia la edición y por eso el encuadre de página no coincide verticalmente. La región radial sí es cotejable. Se revisaron también las regiones de opciones y progreso con la captura móvil.
+
+**Historia de comparación:** la implementación anterior tenía un panel con título/cierre separado y dos anillos sin iconos ni familias dibujadas (P1). Se quitó el panel, se ancló la animación al botón, se añadieron cuadrantes, iconos, nombres y realce de sector. La primera pasada de anillo único desktop amontonaba etiquetas en Defensa (P2); se escalonaron radialmente y se recapturó. Móvil conserva dos bandas sectoriales dentro de cada cuadrante para que los 23 controles sean distinguibles sin desbordamiento.
+
+**Superficies de fidelidad:** tipografía y pesos mantienen la jerarquía blanca/lima, aunque las etiquetas de sector son más pequeñas que en la referencia (P2 en móvil); el espaciado y la región principal respetan el shell glass, con diferencias de posición por scroll; colores/tokens reproducen las cuatro familias; iconos provienen de biblioteca vectorial y el balón central del sistema existente, sin marcadores genéricos; el texto de categorías ya usa términos de la guía en vez de campos libres. Los sectores móviles de dos bandas y el texto compacto son desviaciones intencionales respecto al anillo ilustrado. No se incorporaron imágenes aprobadas al repositorio.
+
+**Hallazgos abiertos:** [P2] la referencia de escritorio ilustra un solo anillo con rótulos curvos y mayor tamaño de texto; el responsive móvil necesita dos bandas para conservar la legibilidad. La validación final de esa adaptación corresponde al propietario. [P2] no existen copias verificadas de dos PNG aprobados de captura/revisión, así que no puede cerrarse la comparación completa. La guía temporal requiere duración reglamentaria real, no disponible en el contrato: se ofrece selección manual sin inferencia y queda pendiente decidir cómo acreditar ese dato. Teclado virtual y lector nativo no se acreditaron en Chrome.
+
+**Verificación:** Chrome autenticado en escritorio y 390×844, con retorno de foco al mismo botón tras cerrar, semántica de 23 botones/4 familias, selección y corrección; 6 suites/29 pruebas frontend, 1 suite/4 pruebas del validador y ambos typechecks pasados. Consola registró solo errores transitorios durante sustitución del archivo por recarga en caliente; la ruta volvió a renderizar. Servicio y base sintética permanecen disponibles, sin confirmación del partido. Evidencia detallada en `specs/011-analyst-match-analysis/verification/visual-review.md`.
+
+final result: blocked
+
+## Cierre vigente de Feature 011 — 2026-10-20
+
+Los bloques anteriores son el historial de iteraciones, no el resultado final. El titular aprobó la UI actual; `specs/011-analyst-match-analysis/verification/visual-review.md` documenta la comprobación en Chrome autenticado, escritorio y viewport móvil, incluidos jerarquía de encabezados y teclado web tras su corrección. T038 está cerrado para ese alcance web. No se cotejaron `Analyst Match Event Capture-1.png` ni `Analyst event review and correction-4.png` porque faltan copias verificables; tampoco se probaron teclado virtual ni lector de pantalla nativos. La guía FEM citada permanece solo local y no se incorpora al repositorio. Las bandas temporales se eligen manualmente; duración reglamentaria y cálculo automático son trabajo futuro.
+
+final result: accepted for the documented web scope; native and missing-reference limits remain
