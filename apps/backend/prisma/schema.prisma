@@ -338,6 +338,7 @@ model Identity {
   loadedFirstMatches                    FirstMatch[]                            @relation("firstMatchAnalyst")
   canceledFirstMatches                  FirstMatch[]                            @relation("firstMatchCanceler")
   firstMatchIntents                     FirstMatchIntent[]                      @relation("firstMatchIntentActor")
+  analystMatchUploads                   AnalystMatchUpload[]                    @relation("analystMatchUploadActor")
 }
 
 model RoleAssignment {
@@ -1217,6 +1218,7 @@ model FirstMatch {
   analyst                    Identity?           @relation("firstMatchAnalyst", fields: [loadedByAnalystIdentityId], references: [id], onDelete: Restrict)
   canceler                   Identity?           @relation("firstMatchCanceler", fields: [canceledByIdentityId], references: [id], onDelete: Restrict)
   intents                    FirstMatchIntent[]
+  analystUpload              AnalystMatchUpload?
 
   @@unique([id, passportId])
   @@index([passportId, matchDate, unitState])
@@ -1239,4 +1241,41 @@ model FirstMatchIntent {
 
   @@unique([passportId, idempotencyKey])
   @@index([matchId, occurredAt])
+}
+
+model AnalystMatchUpload {
+  loadId                String              @id @db.Uuid
+  firstMatchId          String              @unique @db.Uuid
+  analystIdentityId     String              @db.Uuid
+  expectedMatchVersion Int
+  intentDigest          String              @db.VarChar(64)
+  participation         String              @db.VarChar(32)
+  totalMinutesPlayed    Int
+  youtubeUrl            String              @db.VarChar(2048)
+  confirmedAt           DateTime            @default(now())
+  firstMatch            FirstMatch          @relation(fields: [firstMatchId], references: [id], onDelete: Restrict)
+  analyst               Identity            @relation("analystMatchUploadActor", fields: [analystIdentityId], references: [id], onDelete: Restrict)
+  events                AnalystMatchEvent[]
+
+  @@index([analystIdentityId, confirmedAt])
+}
+
+model AnalystMatchEvent {
+  id               String             @id @default(uuid()) @db.Uuid
+  loadId           String             @db.Uuid
+  sequence         Int
+  catalogVersion   Int
+  eventType        String             @db.VarChar(48)
+  variant          String?            @db.VarChar(16)
+  result           String             @db.VarChar(32)
+  videoMinute      String             @db.VarChar(20)
+  period           String?            @db.VarChar(24)
+  addedTime        Int?
+  context          Json
+  complexity       Json
+  goalkeeperDetail Json?
+  observation      String?
+  upload           AnalystMatchUpload @relation(fields: [loadId], references: [loadId], onDelete: Restrict)
+
+  @@unique([loadId, sequence])
 }

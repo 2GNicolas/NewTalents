@@ -226,7 +226,7 @@ El MVP está centrado en el jugador. Los tutores administran uno o varios pasapo
 
 **RF-VID-01 — Alojamiento externo.** Los videos completos se alojarán en YouTube; la plataforma conservará el enlace asociado al partido.
 
-**RF-VID-02 — Responsable del enlace.** New Talents registrará y administrará el enlace del video.
+**RF-VID-02 — Responsable del enlace.** New Talents administrará el enlace del video. En la carga de datos del partido de Feature 011, el Analista autorizado de New Talents lo introducirá en el paso final, después de capturar y revisar los eventos, junto con el total de minutos jugados; esa carga no publica automáticamente el enlace.
 
 **RF-VID-03 — Video del partido.** El pasaporte permitirá acceder al video completo desde el partido correspondiente.
 
@@ -310,9 +310,9 @@ El MVP está centrado en el jugador. Los tutores administran uno o varios pasapo
 
 1.  El tutor o la academia registra fecha, rival, competencia y lugar.
 2.  New Talents gestiona la grabación por fuera de la plataforma y publica el video en YouTube.
-3.  New Talents agrega el enlace del video al partido.
-4.  El analista observa el video externamente y registra eventos, contexto, complejidad, consecuencia y minuto.
-5.  El sistema consolida las estadísticas y la evaluación conforme a la versión vigente del modelo.
+3.  New Talents dispone del enlace del video para asociarlo al partido mediante la carga autorizada del Analista.
+4.  El analista observa el video externamente, registra eventos, contexto, complejidad y minuto, revisa la captura y, en el paso final de Feature 011, introduce el total de minutos jugados y el enlace de YouTube antes de confirmar. Esta carga no completa la evaluación ni publica el enlace.
+5.  En una capacidad posterior y separada de la carga de Feature 011, el sistema consolidará las estadísticas y la evaluación conforme a la versión vigente del modelo; la carga por sí sola no las calcula ni las da por completadas.
 6.  El analista agrega observaciones y selecciona los mejores momentos.
 7.  New Talents publica el análisis.
 8.  Tutor, academia y público autorizado consultan el contenido que corresponda a su nivel de acceso.
